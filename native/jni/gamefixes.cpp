@@ -9,6 +9,8 @@
 #include <string>
 #include "offsets.h"
 
+
+#ifdef __arm__
 struct VersionStringData {
     char* saved_string = nullptr;
     char* saved_dest = nullptr;
@@ -22,16 +24,7 @@ struct VersionStringData {
         if(saved_commit) free(saved_commit);
     }
 };
-
-struct ChatRendererData {
-    bool is_patched = false;
-    bool is_set = false;
-    float pos_x = 0.0f;
-    float pos_y = 0.0f;
-};
-
 static VersionStringData version_data;
-static ChatRendererData chat_data;
 
 void (*InstallVersionString)(int param_1,int param_2,int param_3) = nullptr;
 void InstallVersionStringHook(int param_1,int param_2,int param_3)
@@ -64,6 +57,15 @@ void InstallVersionStringHook(int param_1,int param_2,int param_3)
     }
 }
 
+
+struct ChatRendererData {
+    bool is_patched = false;
+    bool is_set = false;
+    float pos_x = 0.0f;
+    float pos_y = 0.0f;
+};
+static ChatRendererData chat_data;
+
 void (*ChatRenderer)(int param_1, int param_2) = nullptr;
 void ChatRendererHook(int param_1, int param_2)
 {    
@@ -77,9 +79,35 @@ void ChatRendererHook(int param_1, int param_2)
     
     return ChatRenderer(param_1, param_2);
 }
+#endif
 
+
+struct HudData {
+    bool is_patched = false;
+    int kostyl = 0;
+};
+static HudData hud_data;
+
+#ifdef __arm__
+void (*InstallHud)(int param_1, int param_2) = nullptr;
+void InstallHudHook(int param_1, int param_2)
+{
+    LOGD("InstallHud: hooked and breaked");
+}
+#elif defined __aarch64__
+void (*InstallHud)(long param1) = nullptr;
+void InstallHudHook(long param1)
+{
+    if(hud_data.kostyl < 5) 
+    {
+        InstallHud(param1); 
+        hud_data.kostyl++;
+    }
+}
+#endif
 
 extern "C" {
+    #ifdef __arm__
     JNIEXPORT void JNICALL
     Java_com_arzmod_radare_InitGamePatch_setVersionString(JNIEnv* env, jobject thiz, jstring string) {
         if(version_data.saved_string) {
@@ -128,6 +156,19 @@ extern "C" {
                 chat_data.is_patched = true;
             } else {
                 chat_data.is_patched = true;
+            }
+        }
+    }
+    #endif
+    
+    JNIEXPORT void JNICALL
+    Java_com_arzmod_radare_InitGamePatch_setDefaultHud(JNIEnv* env, jobject thiz) {
+        if(!hud_data.is_patched) {
+            int result = PatternHook(INSTALL_HUD_PATTERN, libHandle, GetLibrarySize(libName), reinterpret_cast<uintptr_t>(InstallHudHook), reinterpret_cast<uintptr_t*>(&InstallHud), "InstallHudHook");
+            if(result) {
+                hud_data.is_patched = true;
+            } else {
+                hud_data.is_patched = true;
             }
         }
     }

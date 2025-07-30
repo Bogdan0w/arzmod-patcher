@@ -13,11 +13,41 @@ uintptr_t libHandle = 0;
 char raknetName[256] = {0};
 uintptr_t raknetHandle = 0;
 
+JavaVM* g_jvm = nullptr;
+jobject g_activity = nullptr;
+char g_package[256] = {0};
+
+
 #define HOOK_LIBRARY "libsamp.so"
 #define HOOK_RAKNET "libraknet.so"
 
+JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved) {
+    g_jvm = vm;
+    return JNI_VERSION_1_6;
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_arzmod_radare_InitGamePatch_setActivity(JNIEnv* env, jclass clazz, jobject activity) {
+    if (g_activity != nullptr) {
+        env->DeleteGlobalRef(g_activity);
+    }
+    g_activity = env->NewGlobalRef(activity);
+}
+
 __attribute__((constructor))
 void init() {
+    char path[64] = {0};
+    char package[256] = {0};
+    pid_t pid = getpid();
+    snprintf(path, sizeof(path), "/proc/%d/cmdline", pid);
+    FILE* fp = fopen(path, "r");
+    size_t size = fread(package, 1, sizeof(package) - 1, fp);
+    fclose(fp);
+    if (size > 0) {
+        package[size] = '\0';
+        strncpy(g_package, package, sizeof(g_package) - 1);
+        g_package[sizeof(g_package) - 1] = '\0';
+    }
     #ifdef __arm__
         libHandle = FindLibrary(HOOK_LIBRARY);
         if(libHandle == 0)
@@ -45,13 +75,13 @@ void init() {
             InitHookStuff(libName);
         }
 
-        LOGI("ARZMOD Native Init (samp_base: %x) | x%i | Build time: %s", libHandle, sizeof(void*) * 8, __DATE__ " " __TIME__);
+        LOGI("ARZMOD Native Init (%s) (samp_base: %x) | x%i | Build time: %s", g_package, libHandle, sizeof(void*) * 8, __DATE__ " " __TIME__);
     #elif defined __aarch64__
         strncpy(libName, HOOK_LIBRARY, sizeof(libName) - 1);
         strncpy(raknetName, HOOK_RAKNET, sizeof(raknetName) - 1);
         libHandle = FindLibrary(HOOK_LIBRARY);
         raknetHandle = FindLibrary(HOOK_RAKNET);
-        LOGI("ARZMOD Native Init (samp_base: %lx | raknet_base: %lx) | x%lu | Build time: %s", libHandle, raknetHandle, sizeof(void*) * 8, __DATE__ " " __TIME__);
+        LOGI("ARZMOD Native Init (%s) (samp_base: %lx | raknet_base: %lx) | x%lu | Build time: %s", g_package, libHandle, raknetHandle, sizeof(void*) * 8, __DATE__ " " __TIME__);
     #else
         #error This lib is supposed to work on ARM only!
     #endif

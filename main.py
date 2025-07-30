@@ -775,7 +775,7 @@ def build_native_lib(folder_name, arch):
 
     if os.path.exists(jni_path):
         try:
-            subprocess.run("ndk-build APP_ABI=" + arch, cwd=folder_path, check=True, shell=True)
+            subprocess.run(f"ndk-build APP_ABI={arch} {'TARGET_BUILD_TYPE=release' if '-release' in sys.argv else ''}", cwd=folder_path, check=True, shell=True)
         except subprocess.CalledProcessError as e:
             print(f"Ошибка при сборке через ndk-build: {str(e)}")
             print("Возьмем готовую библиотеку из папки libs/{arch} (если вы хотите собрать библиотеку самостоятельно, попробуйте прочитать native/README.md)")
@@ -1074,8 +1074,6 @@ def arzmod_patch():
 		# ARZMOD TECH PATCH
 		search_and_replace(src_path + "/com/arizona/launcher/di/ArizonaLauncherAPIModule.smali", "https://api.arizona-five.com/", "https://api.arzmod.com/")
 		search_and_replace(miami_path + "/com/miami/game/feature/home/ui/model/HomeUiState$Companion.smali", "https://arizona-rp.com/shop" if project == ARIZONA_MOBILE else "https://rodina-rp.com/shop", "https://t.me/cleodis")
-		search_and_replace(ui_path + "/ru/mrlargha/commonui/elements/hud/presentation/Hud.smali", "arizona-rp.com" if project == ARIZONA_MOBILE else "rodina-rp.com", "arzmod.com")
-		if project == ARIZONA_MOBILE: search_and_replace(ui_path + "/ru/mrlargha/commonui/elements/hud/presentation/api/HudApi.smali", "desktop/ping/Arizona/ping.json", "https://radarebot.hhos.net/api/serverlist")
 		search_and_replace_after(miami_path + "/com/miami/game/core/connection/resolver/data/ServersList.smali", ".method public final newsServers", "main_api", "main_arizona_news")
 		search_and_replace_after(miami_path + "/com/miami/game/core/connection/resolver/data/ServersList.smali", ".method public final newsServers", "reserve_api", "reserve_arizona_news")
 		insert_smali_code_after_line(src_path + "/com/arizona/launcher/MainEntrench.smali", ".method protected onCreate", "invoke-super {p0, p1}, Lcom/arizona/launcher/Hilt_MainEntrench;->onCreate(Landroid/os/Bundle;)V", """
@@ -1170,138 +1168,137 @@ def arzmod_patch():
 
 
 	# CONNECTSERVER PATCH
-	if not usearm64:
-		search_and_replace(miami_path + "/com/miami/game/core/settings/ConnectionData.smali", "192.168.0.133", "join.arzfun.com")
-		search_and_replace_after(miami_path + "/com/miami/game/feature/settings/ui/model/SettingsUiState.smali", ".method public constructor <init>", "iput-boolean p7, p0, Lcom/miami/game/feature/settings/ui/model/SettingsUiState;->isDebug:Z", """
-				const/4 p7, 0x1
-				iput-boolean p7, p0, Lcom/miami/game/feature/settings/ui/model/SettingsUiState;->isDebug:Z
-			""") 
-		replace_block_in_file(miami_path + "/com/miami/game/core/settings/ConnectionData.smali", "const-string p3, \"password\"", """
-			invoke-static {}, Lcom/miami/game/core/settings/ConnectionData;->getRandomNickname()Ljava/lang/String;
-			move-result-object p3
-		""")
-		append_to_file(miami_path + "/com/miami/game/core/settings/ConnectionData.smali", """
-			.method public static getRandomNickname()Ljava/lang/String;
-				.locals 8
-				invoke-static {}, Ljava/util/UUID;->randomUUID()Ljava/util/UUID;
-				move-result-object v0
-				invoke-virtual {v0}, Ljava/util/UUID;->toString()Ljava/lang/String;
-				move-result-object v1
-				const-string v0, "toString(...)"
-				invoke-static {v1, v0}, Lkotlin/jvm/internal/Intrinsics;->checkNotNullExpressionValue(Ljava/lang/Object;Ljava/lang/String;)V
-				const/4 v5, 0x4
-				const/4 v6, 0x0
-				const-string v2, "-"
-				const-string v3, ""
-				const/4 v4, 0x0
-				invoke-static/range {v1 .. v6}, Lkotlin/text/StringsKt;->replace$default(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ZILjava/lang/Object;)Ljava/lang/String;
-				move-result-object v0
-				const/4 v1, 0x0
-				const/16 v2, 0xc
-				invoke-virtual {v0, v1, v2}, Ljava/lang/String;->substring(II)Ljava/lang/String;
-				move-result-object v0
-				const-string v1, "substring(...)"
-				invoke-static {v0, v1}, Lkotlin/jvm/internal/Intrinsics;->checkNotNullExpressionValue(Ljava/lang/Object;Ljava/lang/String;)V
-				new-instance v1, Ljava/lang/StringBuilder;
-				const-string v2, "Player_"
-				invoke-direct {v1, v2}, Ljava/lang/StringBuilder;-><init>(Ljava/lang/String;)V
-				invoke-virtual {v1, v0}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
-				invoke-virtual {v1}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
-				move-result-object v0
-				return-object v0
-			.end method
-		""")
-		replace_block_in_file(src_path + "/com/arizona/launcher/MainEntrench.smali", """
-			sget-object v7, Lcom/miami/game/feature/download/dialog/ui/connection/ConnectionHolder;->INSTANCE:Lcom/miami/game/feature/download/dialog/ui/connection/ConnectionHolder;
+	search_and_replace(miami_path + "/com/miami/game/core/settings/ConnectionData.smali", "192.168.0.133", "join.arzfun.com")
+	search_and_replace_after(miami_path + "/com/miami/game/feature/settings/ui/model/SettingsUiState.smali", ".method public constructor <init>", "iput-boolean p7, p0, Lcom/miami/game/feature/settings/ui/model/SettingsUiState;->isDebug:Z", """
+			const/4 p7, 0x1
+			iput-boolean p7, p0, Lcom/miami/game/feature/settings/ui/model/SettingsUiState;->isDebug:Z
+		""") 
+	replace_block_in_file(miami_path + "/com/miami/game/core/settings/ConnectionData.smali", "const-string p3, \"password\"", """
+		invoke-static {}, Lcom/miami/game/core/settings/ConnectionData;->getRandomNickname()Ljava/lang/String;
+		move-result-object p3
+	""")
+	append_to_file(miami_path + "/com/miami/game/core/settings/ConnectionData.smali", """
+		.method public static getRandomNickname()Ljava/lang/String;
+			.locals 8
+			invoke-static {}, Ljava/util/UUID;->randomUUID()Ljava/util/UUID;
+			move-result-object v0
+			invoke-virtual {v0}, Ljava/util/UUID;->toString()Ljava/lang/String;
+			move-result-object v1
+			const-string v0, "toString(...)"
+			invoke-static {v1, v0}, Lkotlin/jvm/internal/Intrinsics;->checkNotNullExpressionValue(Ljava/lang/Object;Ljava/lang/String;)V
+			const/4 v5, 0x4
+			const/4 v6, 0x0
+			const-string v2, "-"
+			const-string v3, ""
+			const/4 v4, 0x0
+			invoke-static/range {v1 .. v6}, Lkotlin/text/StringsKt;->replace$default(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ZILjava/lang/Object;)Ljava/lang/String;
+			move-result-object v0
+			const/4 v1, 0x0
+			const/16 v2, 0xc
+			invoke-virtual {v0, v1, v2}, Ljava/lang/String;->substring(II)Ljava/lang/String;
+			move-result-object v0
+			const-string v1, "substring(...)"
+			invoke-static {v0, v1}, Lkotlin/jvm/internal/Intrinsics;->checkNotNullExpressionValue(Ljava/lang/Object;Ljava/lang/String;)V
+			new-instance v1, Ljava/lang/StringBuilder;
+			const-string v2, "Player_"
+			invoke-direct {v1, v2}, Ljava/lang/StringBuilder;-><init>(Ljava/lang/String;)V
+			invoke-virtual {v1, v0}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+			invoke-virtual {v1}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+			move-result-object v0
+			return-object v0
+		.end method
+	""")
+	replace_block_in_file(src_path + "/com/arizona/launcher/MainEntrench.smali", """
+		sget-object v7, Lcom/miami/game/feature/download/dialog/ui/connection/ConnectionHolder;->INSTANCE:Lcom/miami/game/feature/download/dialog/ui/connection/ConnectionHolder;
 
-			invoke-virtual {v7}, Lcom/miami/game/feature/download/dialog/ui/connection/ConnectionHolder;->getSettingsData()Lcom/miami/game/feature/download/dialog/ui/connection/SettingsData;
+		invoke-virtual {v7}, Lcom/miami/game/feature/download/dialog/ui/connection/ConnectionHolder;->getSettingsData()Lcom/miami/game/feature/download/dialog/ui/connection/SettingsData;
 
-			move-result-object v7
+		move-result-object v7
 
-			invoke-virtual {v7}, Lcom/miami/game/feature/download/dialog/ui/connection/SettingsData;->getPassword()Ljava/lang/String;
+		invoke-virtual {v7}, Lcom/miami/game/feature/download/dialog/ui/connection/SettingsData;->getPassword()Ljava/lang/String;
 
-			move-result-object v7
+		move-result-object v7
 
-			const-string v9, "pass"
+		const-string v9, "pass"
 
-			invoke-virtual {v6, v9, v7}, Lorg/json/JSONObject;->put(Ljava/lang/String;Ljava/lang/Object;)Lorg/json/JSONObject;
+		invoke-virtual {v6, v9, v7}, Lorg/json/JSONObject;->put(Ljava/lang/String;Ljava/lang/Object;)Lorg/json/JSONObject;
 
-			move-result-object v6""", "")
-		replace_block_in_file(src_path + "/com/arizona/launcher/MainEntrench.smali", """
-			invoke-direct {p0}, Lcom/arizona/launcher/MainEntrench;->getMainViewModel()Lcom/arizona/launcher/MainViewModel;
+		move-result-object v6""", "")
+	replace_block_in_file(src_path + "/com/arizona/launcher/MainEntrench.smali", """
+		invoke-direct {p0}, Lcom/arizona/launcher/MainEntrench;->getMainViewModel()Lcom/arizona/launcher/MainViewModel;
 
-			move-result-object v6
+		move-result-object v6
 
-			invoke-virtual {v6}, Lcom/arizona/launcher/MainViewModel;->getPlayerNick()Ljava/lang/String;
+		invoke-virtual {v6}, Lcom/arizona/launcher/MainViewModel;->getPlayerNick()Ljava/lang/String;
 
-			move-result-object v6""", 
-			"""
-			sget-object v6, Lcom/miami/game/feature/download/dialog/ui/connection/ConnectionHolder;->INSTANCE:Lcom/miami/game/feature/download/dialog/ui/connection/ConnectionHolder;
+		move-result-object v6""", 
+		"""
+		sget-object v6, Lcom/miami/game/feature/download/dialog/ui/connection/ConnectionHolder;->INSTANCE:Lcom/miami/game/feature/download/dialog/ui/connection/ConnectionHolder;
 
-			invoke-virtual {v6}, Lcom/miami/game/feature/download/dialog/ui/connection/ConnectionHolder;->getSettingsData()Lcom/miami/game/feature/download/dialog/ui/connection/SettingsData;
+		invoke-virtual {v6}, Lcom/miami/game/feature/download/dialog/ui/connection/ConnectionHolder;->getSettingsData()Lcom/miami/game/feature/download/dialog/ui/connection/SettingsData;
 
-			move-result-object v6
+		move-result-object v6
 
-			invoke-virtual {v6}, Lcom/miami/game/feature/download/dialog/ui/connection/SettingsData;->getPassword()Ljava/lang/String;
+		invoke-virtual {v6}, Lcom/miami/game/feature/download/dialog/ui/connection/SettingsData;->getPassword()Ljava/lang/String;
 
-			move-result-object v6
-		""", ".method private final connectToTestServer")
+		move-result-object v6
+	""", ".method private final connectToTestServer")
 
-		ET.register_namespace("android", "http://schemas.android.com/apk/res/android")
-		tree = ET.parse(manifest_path)
-		root = tree.getroot()
-		application = root.find('.//application')
+	ET.register_namespace("android", "http://schemas.android.com/apk/res/android")
+	tree = ET.parse(manifest_path)
+	root = tree.getroot()
+	application = root.find('.//application')
+	
+	main_entrench = None
+	for activity in application.findall('.//activity'):
+		activity_name = activity.attrib.get('{http://schemas.android.com/apk/res/android}name')
+		if activity_name and ('MainEntrench' in activity_name or 'com.arizona.launcher.MainEntrench' in activity_name):
+			main_entrench = activity
+			break
+	
+	if main_entrench is not None:
+		intent_filter = ET.SubElement(main_entrench, 'intent-filter')
+	
+		action = ET.SubElement(intent_filter, 'action')
+		action.attrib['{http://schemas.android.com/apk/res/android}name'] = 'android.intent.action.VIEW'
+	
+		category1 = ET.SubElement(intent_filter, 'category')
+		category1.attrib['{http://schemas.android.com/apk/res/android}name'] = 'android.intent.category.DEFAULT'
 		
-		main_entrench = None
+		category2 = ET.SubElement(intent_filter, 'category')
+		category2.attrib['{http://schemas.android.com/apk/res/android}name'] = 'android.intent.category.BROWSABLE'
+		
+		data = ET.SubElement(intent_filter, 'data')
+		data.attrib['{http://schemas.android.com/apk/res/android}scheme'] = 'samp' if project == ARIZONA_MOBILE else 'crmp'
+		
+		tree.write(manifest_path, encoding='utf-8', xml_declaration=True)
+		print("Intent-filter успешно добавлен")
+	else:
+		print("Activity MainEntrench не найдена")
+		print("\nНайденные activity:")
 		for activity in application.findall('.//activity'):
-			activity_name = activity.attrib.get('{http://schemas.android.com/apk/res/android}name')
-			if activity_name and ('MainEntrench' in activity_name or 'com.arizona.launcher.MainEntrench' in activity_name):
-				main_entrench = activity
-				break
-		
-		if main_entrench is not None:
-			intent_filter = ET.SubElement(main_entrench, 'intent-filter')
-		
-			action = ET.SubElement(intent_filter, 'action')
-			action.attrib['{http://schemas.android.com/apk/res/android}name'] = 'android.intent.action.VIEW'
-		
-			category1 = ET.SubElement(intent_filter, 'category')
-			category1.attrib['{http://schemas.android.com/apk/res/android}name'] = 'android.intent.category.DEFAULT'
-			
-			category2 = ET.SubElement(intent_filter, 'category')
-			category2.attrib['{http://schemas.android.com/apk/res/android}name'] = 'android.intent.category.BROWSABLE'
-			
-			data = ET.SubElement(intent_filter, 'data')
-			data.attrib['{http://schemas.android.com/apk/res/android}scheme'] = 'samp' if project == ARIZONA_MOBILE else 'crmp'
-			
-			tree.write(manifest_path, encoding='utf-8', xml_declaration=True)
-			print("Intent-filter успешно добавлен")
-		else:
-			print("Activity MainEntrench не найдена")
-			print("\nНайденные activity:")
-			for activity in application.findall('.//activity'):
-				print(activity.attrib.get('{http://schemas.android.com/apk/res/android}name'))
-		insert_smali_code_after_line(src_path + "/com/arizona/launcher/MainEntrench.smali", ".method protected onCreate", "invoke-super {p0, p1}, Lcom/arizona/launcher/Hilt_MainEntrench;->onCreate(Landroid/os/Bundle;)V", """
-			new-instance v2, Lcom/arzmod/radare/ApplicationStart;
-            invoke-direct {v2, p0}, Lcom/arzmod/radare/ApplicationStart;-><init>(Landroid/content/Context;)V
-            invoke-virtual {p0}, Landroid/app/Activity;->getIntent()Landroid/content/Intent;
-            move-result-object v3
-            invoke-virtual {v2, v3}, Lcom/arzmod/radare/ApplicationStart;->handleSampLink(Landroid/content/Intent;)V
-		""")
+			print(activity.attrib.get('{http://schemas.android.com/apk/res/android}name'))
+	insert_smali_code_after_line(src_path + "/com/arizona/launcher/MainEntrench.smali", ".method protected onCreate", "invoke-super {p0, p1}, Lcom/arizona/launcher/Hilt_MainEntrench;->onCreate(Landroid/os/Bundle;)V", """
+		new-instance v2, Lcom/arzmod/radare/ApplicationStart;
+        invoke-direct {v2, p0}, Lcom/arzmod/radare/ApplicationStart;-><init>(Landroid/content/Context;)V
+        invoke-virtual {p0}, Landroid/app/Activity;->getIntent()Landroid/content/Intent;
+        move-result-object v3
+        invoke-virtual {v2, v3}, Lcom/arzmod/radare/ApplicationStart;->handleSampLink(Landroid/content/Intent;)V
+	""")
 
-		append_to_file(src_path + "/com/arizona/launcher/MainEntrench.smali", """
-			.method protected onNewIntent(Landroid/content/Intent;)V
-				.locals 2
-				.param p1, "intent"    # Landroid/content/Intent;
+	append_to_file(src_path + "/com/arizona/launcher/MainEntrench.smali", """
+		.method protected onNewIntent(Landroid/content/Intent;)V
+			.locals 2
+			.param p1, "intent"    # Landroid/content/Intent;
 
-				.prologue
-				invoke-super {p0, p1}, Landroid/app/Activity;->onNewIntent(Landroid/content/Intent;)V
-				new-instance v0, Lcom/arzmod/radare/ApplicationStart;
-				invoke-direct {v0, p0}, Lcom/arzmod/radare/ApplicationStart;-><init>(Landroid/content/Context;)V
-				invoke-virtual {v0, p1}, Lcom/arzmod/radare/ApplicationStart;->handleSampLink(Landroid/content/Intent;)V
-				return-void
-			.end method
-		""")
+			.prologue
+			invoke-super {p0, p1}, Landroid/app/Activity;->onNewIntent(Landroid/content/Intent;)V
+			new-instance v0, Lcom/arzmod/radare/ApplicationStart;
+			invoke-direct {v0, p0}, Lcom/arzmod/radare/ApplicationStart;-><init>(Landroid/content/Context;)V
+			invoke-virtual {v0, p1}, Lcom/arzmod/radare/ApplicationStart;->handleSampLink(Landroid/content/Intent;)V
+			return-void
+		.end method
+	""")
 
 	# UPDATESERVICE PATCH + classes_arzmod/src/com/arzmod/radare/UpdateServicePatch.java
 	search_and_replace(src_path + "/com/arizona/launcher/UpdateService$isAllFilesOk$1.smali", "iget-boolean v6, p0, Lcom/arizona/launcher/UpdateService$isAllFilesOk$1;->$purgeExtraFiles:Z", "const/4 v6, 0x0")	
@@ -1342,43 +1339,9 @@ def arzmod_patch():
 		if-nez v0, :cond_2
 	""")
 
-	# GAMEARCHIVE 1508 COMPATIBLE
-	append_to_file(src_path + "/com/arizona/game/GTASA.smali", """
-		.method public InstallHud(III)V
-			.locals 7
-			.annotation system Ldalvik/annotation/MethodParameters;
-				accessFlags = {
-					0x0,
-					0x0,
-					0x0,
-					0x0
-				}
-				names = {
-					"playerId",
-					"serverId",
-					"serverType",
-					"isStreamerMode"
-				}
-			.end annotation
-			.line 891
-			new-instance v6, Lcom/arizona/game/GTASA$$ExternalSyntheticLambda36;
-			move-object v0, v6
-			move-object v1, p0
-			move v2, p1
-			move v3, p2
-			move v4, p3
-			const/4 v5, 0x0
-			invoke-direct/range {v0 .. v5}, Lcom/arizona/game/GTASA$$ExternalSyntheticLambda36;-><init>(Lcom/arizona/game/GTASA;IIII)V
-			invoke-virtual {p0, v6}, Lcom/arizona/game/GTASA;->runOnUiThread(Ljava/lang/Runnable;)V
-			return-void
-		.end method
-	""")
+	# x32 COMPATIBLE
 	insert_code_before_line(src_path + "/com/arizona/game/GTASA.smali", ".method private native InitSetting(", """
 		.method public static native InitModloaderConfig(I)V
-		.end method
-	""")
-	insert_code_before_line(src_path + "/com/arizona/game/GTASA.smali", ".method private native InitSetting(", """
-		.method public static native InitSetting(ZIZLjava/lang/String;ILjava/lang/String;Ljava/lang/String;)V
 		.end method
 	""")
 	search_and_replace(src_path + "/com/arizona/game/GTASA.smali", ".method private native InitSetting(", ".method public static native InitSetting(") 
@@ -1425,7 +1388,7 @@ def arzmod_patch():
 		.end method
 	""")
 	insert_smali_code_after_line(src_path + "/com/arizona/game/GTASAInternal.smali", ".method public onCreate", ".end annotation", """
-		invoke-static {}, Lcom/arzmod/radare/InitGamePatch;->firstTimePatches()V
+		invoke-static {p0}, Lcom/arzmod/radare/InitGamePatch;->firstTimePatches(Landroid/app/Activity;)V
 	""")
 	insert_smali_code_after_line(ui_path + "/ru/mrlargha/commonui/elements/authorization/presentation/screen/RegistrationVideoBackground.smali", ".method private final setAwaitText", ".locals", """
 		invoke-static {p0, p1}, Lcom/arzmod/radare/InitGamePatch;->setAwaitText(Lru/mrlargha/commonui/elements/authorization/presentation/screen/RegistrationVideoBackground;Ljava/lang/String;)V
@@ -1436,6 +1399,20 @@ def arzmod_patch():
 		invoke-static {v0, v1}, Lcom/arzmod/radare/InitGamePatch;->hideVideo(Lru/mrlargha/commonui/elements/authorization/presentation/screen/RegistrationVideoBackground;I)V
 	""")
 
+	# GAME PATCHES + classes_arzmod/src/com/arzmod/radare/GamePatches.java
+	search_and_replace(ui_path + "/ru/mrlargha/commonui/core/SAMPUIElement.smali", ".method protected final getTargetActivity", ".method public final getTargetActivity")
+	search_and_replace(ui_path + "/ru/mrlargha/commonui/core/SAMPUIElement.smali", ".method protected getNotifier", ".method public final getNotifier")
+	insert_smali_code_after_line(ui_path + "/ru/mrlargha/commonui/elements/hud/presentation/Hud.smali", ".method public setVisibility", ".locals", """
+		invoke-static {p0, p1}, Lcom/arzmod/radare/GamePatches;->isHudVisible(Lru/mrlargha/commonui/elements/hud/presentation/Hud;Z)Z
+		move-result p1
+	""")
+	search_and_replace(ui_path + "/ru/mrlargha/commonui/elements/hud/presentation/Hud.smali", ".field private final binding", ".field public final binding")
+	insert_smali_code_after_line(ui_path + "/ru/mrlargha/commonui/elements/hud/presentation/Hud$installHud$1.smali", ".method public onResponse", "Lru/mrlargha/commonui/databinding/HudPageBinding;->hudServerInfoContainer:Landroidx/constraintlayout/widget/ConstraintLayout;", """
+		invoke-static {v0}, Lcom/arzmod/radare/GamePatches;->updateHudShield(Lru/mrlargha/commonui/elements/hud/presentation/Hud;)V
+	""")
+	insert_smali_code_after_line(ui_path + "/ru/mrlargha/commonui/elements/hud/presentation/Hud.smali", ".method public final installHud", "Lru/mrlargha/commonui/databinding/HudPageBinding;->hudServerShieldSite:Landroid/widget/TextView;", """
+		invoke-static {p0}, Lcom/arzmod/radare/GamePatches;->updateHudShield(Lru/mrlargha/commonui/elements/hud/presentation/Hud;)V
+	""")
 
 	# SAVECONTEXT FOR COMPATIBLE + classes_arzmod/src/com/arzmod/radare/AppContext.java
 	insert_smali_code_after_line(src_path + "/com/arizona/launcher/MainEntrench.smali", ".method protected onCreate", "invoke-super {p0, p1}, Lcom/arizona/launcher/Hilt_MainEntrench;->onCreate(Landroid/os/Bundle;)V", """
@@ -1511,7 +1488,76 @@ def arzmod_patch():
 	update_classes(working_dir + f"/{name}/dist/{name}.apk")
 	compile_dex_additions("classes_arzmod", f"classes{get_new_smali_dir_index(app_dir)}.dex")
 
+
+import re
+
+def parse_offsets_for_arch(file_path, arch):
+    with open(file_path, 'r') as f:
+        lines = f.readlines()
+
+    patterns = {}
+    inside_arm = False
+    inside_arm64 = False
+
+    for line in lines:
+        line_strip = line.strip()
+
+        if line_strip == "#ifdef __arm__":
+            inside_arm = True
+            inside_arm64 = False
+            continue
+        if line_strip.startswith("#elif defined __aarch64__"):
+            inside_arm = False
+            inside_arm64 = True
+            continue
+        if line_strip == "#endif":
+            inside_arm = False
+            inside_arm64 = False
+            continue
+
+        m = re.match(r'#define\s+(\w+)\s+"([^"]+)"(?:\s*//\s*(.+))?', line_strip)
+        if m:
+            name, value, comment = m.group(1), m.group(2), m.group(3)
+
+            if inside_arm and arch != "arm":
+                continue
+            if inside_arm64 and arch != "arm64":
+                continue
+
+            patterns[name] = (value, comment)
+
+    return patterns
+
+
+
 def install_game_libraries():
+	libsamppath = f"{app_dir}/lib/{'arm64-v8a' if usearm64 else 'armeabi-v7a'}/libsamp.so"
+
+	nativeoffsetspath = f"{working_dir}/native/jni/offsets.h"
+	nativemodulepath = f"{working_dir}/native/jni/monetloader.h"
+	
+	arch = "arm64" if usearm64 else "arm"
+
+	with open(libsamppath, 'rb') as lib_file:
+		lib_data = lib_file.read()
+
+		patterns = parse_offsets_for_arch(nativeoffsetspath, arch)
+		if os.path.exists(nativemodulepath):
+			patterns.update(parse_offsets_for_arch(nativemodulepath, arch))
+
+		for name, (val, comment) in patterns.items():
+			pattern_value_clean = val.replace("\\x", "")
+			print(f"Проверяем паттерн {name} для архитектуры {arch} - {pattern_value_clean}")
+
+			if comment:
+				with open(f"{app_dir}/lib/{'arm64-v8a' if usearm64 else 'armeabi-v7a'}/{comment}", 'rb') as other_lib:
+					other_data = other_lib.read()
+					if not find_pattern(other_data, pattern_value_clean):
+						exitWithError(f"Паттерн {name} ({pattern_value_clean}) не найден в {comment}")
+			else:
+				if not find_pattern(lib_data, pattern_value_clean):
+					exitWithError(f"Паттерн {name} ({pattern_value_clean}) не найден в {libsamppath}")
+
 	if usearm64:
 		add_asset(f"{working_dir}/resource/profile.json")
 		add_patched_lib("libluajit-5.1.so", "arm64-v8a")
@@ -1530,18 +1576,7 @@ def install_game_libraries():
 		if project == ARIZONA_MOBILE:
 			add_game_version(1601)
 
-		libsamppath = f"{app_dir}/lib/armeabi-v7a/libsamp.so"
-		nativeoffsetspath = f"{working_dir}/native/jni/offsets.h"
-		with open(libsamppath, 'rb') as lib_file:
-			lib_data = lib_file.read()
 
-			patterns = ["INSTALL_VERSION_STRING_PATTERN", "CHAT_RENDER_PATTERN", "SOCKET_LAYER_SENDTO_PATTERN"]
-
-			for pattern in patterns:
-				pattern_value = get_define_value(nativeoffsetspath, pattern).replace("\\x", "")
-				print(f"Проверяем паттерн {pattern} - {pattern_value}")
-				if not find_pattern(lib_data, pattern_value):
-					exitWithError(f"Паттерн {pattern} - {pattern_value} не найден в {libsamppath}")
 
 
 def exitWithError(msg):
@@ -1609,14 +1644,14 @@ if __name__ == "__main__":
 
 	if "-pytest" in sys.argv:
 		while True:
-		    try:
-		        s = input('>>> ')
-		        try:
-		            print(eval(s))
-		        except SyntaxError:
-		            exec(s)
-		    except Exception as e:
-		        print("Error:", e)
+			try:
+				s = input('>>> ')
+				try:
+					print(eval(s))
+				except SyntaxError:
+					exec(s)
+			except Exception as e:
+				print("Error:", e)
 	
 	if "-search" in sys.argv:
 		while True:

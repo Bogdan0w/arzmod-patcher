@@ -686,13 +686,14 @@ public class SettingsPatch {
     public static final String GAME_VERSION = "game_version";
     public static final String IS_NEW_KEYBOARD = "is_new_keyboard";
     public static final String IS_NEW_INTERFACE = "is_new_interface";
-    public static final String IS_VERSION_21 = "is_version_21";
+    public static final String IS_DEFAULT_HUD = "is_default_hud";
     public static final String IS_MODS_MODE = "is_mods_mode";
     public static final String IS_CLEAR_MODE = "is_clear_mode";
     public static final String IS_MODE_MODS = "is_mode_mods";
     public static final String IS_FREE_LAUNCH = "is_free_launch";
     public static final String IS_VERSION_HIDED = "is_version_hided";
     public static final String IS_SKIP_VERIFY = "is_skip_verify";
+    public static final String IS_ACTUAL_VERSION = "is_actual_version";
     public static final String VIDEO_HIDE_STEP = "video_hide_step";
     public static List<AbstractSetting> getSettingsList(SharedPreferences sharedPreferences) {
         List<AbstractSetting> settingsList = new ArrayList<>();
@@ -712,12 +713,13 @@ public class SettingsPatch {
             settingsList.add(new BooleanSetting("Новая клавиатура", "Включает Android клавиатуру, при отключении будет использоваться стандартная SA:MP Mobile клавиатура", IS_NEW_KEYBOARD, true, sharedPreferences));
             settingsList.add(new BooleanSetting("Новый интерфейс", "Включает новый интерфейс, диалоги станут на Java интерфейсе, кнопки под картой также.\nПри отключении под картой будут ESC, ALT (они сломаны разработчиками аризоны, фикс - https://t.me/tglangera/764 ), а диалоги станут стандартными из SA:MP Mobile", IS_NEW_INTERFACE, true, sharedPreferences));
         }
+        settingsList.add(new BooleanSetting("Старый худ", "Скрывает Unity худ и отображает стандартный худ от GTA SA", IS_DEFAULT_HUD, false, sharedPreferences));
     
         settingsList.add(new BooleanSetting("Очистка неиспольуемых файлов", "Данная функция очищает все файлы которые не нужны игре!\nФункция затрагивает только файлы в папке Android/data/"+packageName+"/files и удаляет все файлы необычные файлы\nЭта функция поможет вам удалить остатки сборки после удаления её из Android/media/"+packageName+"/files", IS_CLEAR_MODE, false, sharedPreferences));
         settingsList.add(new BooleanSetting("Режим копирования сборки", "С помощью этой функции вы сможете копировать свою сборку с Android/media/"+packageName+"/files в Android/data/"+packageName+"/files.\nЧтобы удалить сборку используйте функции проверки файлов, и включите функцию очистки неиспользуемых файлов, для очистки остатков.", IS_MODS_MODE, false, sharedPreferences));
-        settingsList.add(new BooleanSetting("Эмуляция лаунчера 2.1", "Глобально ничего не меняет, включает новый инвентарь и запрещает ставить стандартный худ", IS_VERSION_21, false, sharedPreferences));
         settingsList.add(new BooleanSetting("Проверка обновлений кеша игры", "При отключении данной функции, лаунчер не будет проверять обновления кеша игры", IS_MODE_MODS, true, sharedPreferences));
         settingsList.add(new BooleanSetting("Свободная кнопка запуска", "Данная функция позовляет запустить игру во время проверки обновления", IS_FREE_LAUNCH, false, sharedPreferences));
+        settingsList.add(new BooleanSetting("Эмуляция актуальной версии", "При включенной функции лаунчер отправляет на сервер самую актуальную версию игры независимую от текущей версии ARZMOD взятую с https://mob.maz-ins.com/game/release/app_version.json", IS_ACTUAL_VERSION, false, sharedPreferences));
 
         if (!cpu.equals("arm64-v8a")) {
             settingsList.add(new ChatPositionSetting("Позиция чата", CHAT_POSITION_ENABLED, sharedPreferences));
@@ -820,28 +822,6 @@ public class SettingsPatch {
                         }
                     } else if (key.equals(GAME_VERSION)) {
                         Integer choosenVersion = (Integer) newValue;
-                        switch(choosenVersion) {
-                            case 1508: {
-                                Map<String, String> warningLinks = new HashMap<>();
-                                warningLinks.put("t.me/CleoArizona/217", "t.me/CleoArizona/217");
-                                SpannableString message = createClickableLinks(
-                                    "Внимание! Данная версия не работает на аризоновских серверах (включая некоторые бонусники), чтобы играть с неё прочитайте пост t.me/CleoArizona/217\nДля остальных SA:MP серверов можно спокойно использовать",
-                                    warningLinks
-                                );
-
-                                TextView messageView = new TextView(context);
-                                messageView.setText(message);
-                                messageView.setMovementMethod(LinkMovementMethod.getInstance());
-                                messageView.setTextColor(Color.WHITE);
-                                messageView.setPadding(20, 20, 20, 20);
-
-                                new AlertDialog.Builder(context)
-                                    .setTitle("Выбрана версия " + choosenVersion)
-                                    .setView(messageView)
-                                    .setPositiveButton("OK", null)
-                                    .show();
-                            }
-                        }
                         if(choosenVersion != BuildConfig.VERSION_CODE)
                         {
                             new AlertDialog.Builder(context)
