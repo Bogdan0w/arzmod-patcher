@@ -1558,10 +1558,12 @@ def install_game_libraries():
 				with open(f"{app_dir}/lib/{'arm64-v8a' if usearm64 else 'armeabi-v7a'}/{comment}", 'rb') as other_lib:
 					other_data = other_lib.read()
 					if not find_pattern(other_data, pattern_value_clean):
-						exitWithError(f"Паттерн {name} ({pattern_value_clean}) не найден в {comment}")
+						if usearm64 and not arzmod_dev: print(f"Паттерн {name} ({pattern_value_clean}) не найден в {comment}")
+						else: exitWithError(f"Паттерн {name} ({pattern_value_clean}) не найден в {comment}")
 			else:
 				if not find_pattern(lib_data, pattern_value_clean):
-					exitWithError(f"Паттерн {name} ({pattern_value_clean}) не найден в {libsamppath}")
+					if usearm64 and not arzmod_dev: print(f"Паттерн {name} ({pattern_value_clean}) не найден в {libsamppath}")
+					else: exitWithError(f"Паттерн {name} ({pattern_value_clean}) не найден в {libsamppath}")
 
 	if usearm64:
 		add_asset(f"{working_dir}/resource/profile.json")
