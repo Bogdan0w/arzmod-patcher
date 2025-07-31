@@ -686,7 +686,7 @@ public class SettingsPatch {
     public static final String GAME_VERSION = "game_version";
     public static final String IS_NEW_KEYBOARD = "is_new_keyboard";
     public static final String IS_NEW_INTERFACE = "is_new_interface";
-    public static final String IS_DEFAULT_HUD = "is_default_hud";
+    public static final String IS_UNITY_ELEMENTS = "is_unity_elements";
     public static final String IS_MODS_MODE = "is_mods_mode";
     public static final String IS_CLEAR_MODE = "is_clear_mode";
     public static final String IS_MODE_MODS = "is_mode_mods";
@@ -695,6 +695,8 @@ public class SettingsPatch {
     public static final String IS_SKIP_VERIFY = "is_skip_verify";
     public static final String IS_ACTUAL_VERSION = "is_actual_version";
     public static final String VIDEO_HIDE_STEP = "video_hide_step";
+    public static final String HUD_TYPE = "hud_type";
+    public static final String RADAR_TYPE = "radar_type";
     public static List<AbstractSetting> getSettingsList(SharedPreferences sharedPreferences) {
         List<AbstractSetting> settingsList = new ArrayList<>();
         String cpu = Build.CPU_ABI;
@@ -713,7 +715,7 @@ public class SettingsPatch {
             settingsList.add(new BooleanSetting("Новая клавиатура", "Включает Android клавиатуру, при отключении будет использоваться стандартная SA:MP Mobile клавиатура", IS_NEW_KEYBOARD, true, sharedPreferences));
             settingsList.add(new BooleanSetting("Новый интерфейс", "Включает новый интерфейс, диалоги станут на Java интерфейсе, кнопки под картой также.\nПри отключении под картой будут ESC, ALT (они сломаны разработчиками аризоны, фикс - https://t.me/tglangera/764 ), а диалоги станут стандартными из SA:MP Mobile", IS_NEW_INTERFACE, true, sharedPreferences));
         }
-        settingsList.add(new BooleanSetting("Старый худ", "Скрывает Unity худ и отображает стандартный худ от GTA SA", IS_DEFAULT_HUD, false, sharedPreferences));
+        settingsList.add(new BooleanSetting("Элементы UnityHUD", "При худе отличного от UnityHUD данная настройка покажет его элементы при этом не показывая его самого", IS_UNITY_ELEMENTS, false, sharedPreferences));
     
         settingsList.add(new BooleanSetting("Очистка неиспольуемых файлов", "Данная функция очищает все файлы которые не нужны игре!\nФункция затрагивает только файлы в папке Android/data/"+packageName+"/files и удаляет все файлы необычные файлы\nЭта функция поможет вам удалить остатки сборки после удаления её из Android/media/"+packageName+"/files", IS_CLEAR_MODE, false, sharedPreferences));
         settingsList.add(new BooleanSetting("Режим копирования сборки", "С помощью этой функции вы сможете копировать свою сборку с Android/media/"+packageName+"/files в Android/data/"+packageName+"/files.\nЧтобы удалить сборку используйте функции проверки файлов, и включите функцию очистки неиспользуемых файлов, для очистки остатков.", IS_MODS_MODE, false, sharedPreferences));
@@ -732,7 +734,12 @@ public class SettingsPatch {
         }
 
         settingsList.add(new SelectableValueSetting("Скрывать видео загрузки", "Скрывает видео загрузки. Функция работает вне от значения настройки при заходе на кастомный сервер.", VIDEO_HIDE_STEP, 0, MapsKt.mapOf(TuplesKt.to(0, "Не скрывать"), TuplesKt.to(1, "Сразу"), TuplesKt.to(2, "При подключении")), sharedPreferences));
-        if (!cpu.equals("arm64-v8a")) {
+        if (cpu.equals("arm64-v8a")) {
+            settingsList.add(new SelectableValueSetting("Тип худа", "Настройка перенесенная с кастомизации интерфейса. Позволяет выбрать тип HUD", HUD_TYPE, 3, MapsKt.mapOf(TuplesKt.to(0, "Стандартный"), TuplesKt.to(3, "UnityHUD")), sharedPreferences));   
+        }
+        else {
+            settingsList.add(new SelectableValueSetting("Тип худа", "Настройка перенесенная с кастомизации интерфейса. Позволяет выбрать тип HUD", HUD_TYPE, 3, MapsKt.mapOf(TuplesKt.to(0, "Стандартный"), TuplesKt.to(1, "Кастомный 1"), TuplesKt.to(2, "Кастомный 2"), TuplesKt.to(3, "UnityHUD")), sharedPreferences));    
+            settingsList.add(new SelectableValueSetting("Тип радара", "Настройка перенесенная с кастомизации интерфейса. Позволяет выбрать тип карты радара", RADAR_TYPE, 0, MapsKt.mapOf(TuplesKt.to(0, "Стандартный"), TuplesKt.to(1, "Квадратный 1"), TuplesKt.to(2, "Квадратный 2")), sharedPreferences));  
             settingsList.add(new SelectableValueSetting("Загрузчик модов", "Альтернативное название - ModLoader", MODLOADER_STATE, 0, MapsKt.mapOf(TuplesKt.to(0, "Выкл"), TuplesKt.to(1, "Текстуры"), TuplesKt.to(2, "Вкл")), sharedPreferences));
             settingsList.add(new SelectableValueSetting("Версия игры", "Если вы испытываете проблемы на текущей версии игры - выберите другую.\nНекоторые функции, такие как Скрытие строки версии и Позиция чата могут не работать на старых версиях", GAME_VERSION, 0, GameVersions.getVersions(), sharedPreferences));
         }

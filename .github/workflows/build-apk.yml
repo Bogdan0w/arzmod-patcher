@@ -130,9 +130,6 @@ jobs:
           echo 'alias apktool="java -jar /usr/local/bin/apktool.jar"' >> ~/.bashrc
           source ~/.bashrc
 
-      - name: Prepare for building
-        run: chmod +x ./arzmob-classes/dex-tools-v2.4/d2j-dex2jar.sh
-
       - name: Build Arizona x32
         run: |
           mkdir -p dist

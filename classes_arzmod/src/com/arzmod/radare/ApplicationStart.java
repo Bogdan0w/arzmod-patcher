@@ -558,7 +558,7 @@ public class ApplicationStart {
                         int currentVersion = BuildConfig.VERSION_CODE;
                         int newVersion = Integer.parseInt(latestVersion);
 
-                        if (newVersion > currentVersion) {
+                        if (newVersion != currentVersion) {
                             new Handler(Looper.getMainLooper()).post(new Runnable() {
                                 @Override
                                 public void run() {
@@ -568,9 +568,17 @@ public class ApplicationStart {
 
                                     AlertDialog.Builder builder = new AlertDialog.Builder(activity);
                                     builder.setTitle("Доступно обновление");
-                                    builder.setMessage("Доступна новая версия лаунчера: " + newVersion + "\n\nРекомендуется обновить приложение для корректной работы.");
 
-                                    builder.setPositiveButton("Обновить", new DialogInterface.OnClickListener() {
+                                    StringBuilder message = new StringBuilder();
+                                    message.append("Доступна новая версия лаунчера: ").append(newVersion);
+                                    if (newVersion < currentVersion) {
+                                        message.append("\n\nТекущая версия была удалена. Рекомендуется вернуться на старую версию. (ничего удалять/переустанавливать не надо, просто установить новый APK)");
+                                    } else {
+                                        message.append("\n\nРекомендуется обновить приложение для корректной работы.");
+                                    }
+                                    builder.setMessage(message.toString());
+
+                                    builder.setPositiveButton("Установить", new DialogInterface.OnClickListener() {
                                         @Override
                                         public void onClick(DialogInterface dialog, int which) {
                                             Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(releaseUrl));

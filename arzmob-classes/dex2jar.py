@@ -6,6 +6,7 @@ if platform.system() == 'Windows':
     dex2jar_path = os.getcwd() + '/dex-tools-v2.4/d2j-dex2jar.bat'
 elif platform.system() == 'Linux' or platform.system() == 'Darwin':
     dex2jar_path = os.getcwd() + '/dex-tools-v2.4/d2j-dex2jar.sh'
+    os.system("chmod +x " + dex2jar_path)
 else:
     raise Exception("Unsupported operating system")
 

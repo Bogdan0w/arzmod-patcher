@@ -27,6 +27,7 @@ import com.arizona.launcher.MainEntrench;
 import com.arizona.launcher.ArizonaApplication;
 import com.arizona.launcher.model.settings.SettingsConstants;
 import com.arizona.game.R;
+import com.arizona.game.BuildConfig;
 
 public class FirebaseAdd extends FirebaseMessagingService {
     private static final String TAG = "arzmod-firebase-module";
@@ -35,13 +36,28 @@ public class FirebaseAdd extends FirebaseMessagingService {
     private static FirebaseMessaging messageApp = null;
     
     public static void initializeAndSubscribe(Context context) {
-        FirebaseOptions options = new FirebaseOptions.Builder()
-                .setProjectId("arizona-21")
-                .setApiKey("AIzaSyAlNT6Qr1qEGgZu1_Aq3yet7cssDeLv95o")
-                .setApplicationId("1:551532909837:android:639dc64fff7a76e437cc44")
-                .setGcmSenderId("551532909837")
-                .setStorageBucket("arizona-21.appspot.com")
+        FirebaseOptions options = null;
+        if(BuildConfig.GIT_BUILD) 
+        {
+            options = new FirebaseOptions.Builder()
+                .setProjectId("arzmod")
+                .setApiKey("AIzaSyAIav21gmzddU7GlZL-4oodtbAzkzclCmg")
+                .setApplicationId("1:982519605362:android:e9d9e2b84af6dd0601baeb")
+                .setGcmSenderId("982519605362")
+                .setStorageBucket("arzmod.firebasestorage.app")
                 .build();
+        }
+        else
+        {
+            options = new FirebaseOptions.Builder()
+                    .setProjectId("arizona-21")
+                    .setApiKey("AIzaSyAlNT6Qr1qEGgZu1_Aq3yet7cssDeLv95o")
+                    .setApplicationId("1:551532909837:android:639dc64fff7a76e437cc44")
+                    .setGcmSenderId("551532909837")
+                    .setStorageBucket("arizona-21.appspot.com")
+                    .build();
+        }
+        if(options == null) return;
 
         try {
             FirebaseApp app = FirebaseApp.initializeApp(context, options, "ARZFirebaseApp");

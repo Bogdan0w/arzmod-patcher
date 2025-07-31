@@ -83,6 +83,8 @@ void ChatRendererHook(int param_1, int param_2)
 
 
 struct HudData {
+    int hud_type = 3;
+    int radar_type = 0;
     bool is_patched = false;
     int kostyl = 0;
 };
@@ -92,15 +94,22 @@ static HudData hud_data;
 void (*InstallHud)(int param_1, int param_2) = nullptr;
 void InstallHudHook(int param_1, int param_2)
 {
-    LOGD("InstallHud: hooked and breaked");
+    InstallHud(hud_data.hud_type, param_2);
 }
-#elif defined __aarch64__
-void (*InstallHud)(long param1) = nullptr;
-void InstallHudHook(long param1)
+
+void (*InstallRadar)(int param_1, int param_2) = nullptr;
+void InstallRadarHook(int param_1, int param_2)
 {
+    InstallRadar(param_1, hud_data.radar_type);
+} 
+#elif defined __aarch64__
+void (*InstallHud)(long param_1) = nullptr;
+void InstallHudHook(long param_1)
+{
+    if(hud_data.hud_type == 3) return InstallHud(param_1);
     if(hud_data.kostyl < 5) 
     {
-        InstallHud(param1); 
+        InstallHud(param_1); 
         hud_data.kostyl++;
     }
 }
@@ -162,7 +171,10 @@ extern "C" {
     #endif
     
     JNIEXPORT void JNICALL
-    Java_com_arzmod_radare_InitGamePatch_setDefaultHud(JNIEnv* env, jobject thiz) {
+    Java_com_arzmod_radare_InitGamePatch_setHudType(JNIEnv* env, jobject thiz, jint hud_type, jint radar_type) {
+        hud_data.hud_type = hud_type;
+        hud_data.radar_type = radar_type;
+        
         if(!hud_data.is_patched) {
             int result = PatternHook(INSTALL_HUD_PATTERN, libHandle, GetLibrarySize(libName), reinterpret_cast<uintptr_t>(InstallHudHook), reinterpret_cast<uintptr_t*>(&InstallHud), "InstallHudHook");
             if(result) {
@@ -170,6 +182,14 @@ extern "C" {
             } else {
                 hud_data.is_patched = true;
             }
+            #ifdef __arm__
+            result = PatternHook(INSTALL_RADAR_PATTERN, libHandle, GetLibrarySize(libName), reinterpret_cast<uintptr_t>(InstallRadarHook), reinterpret_cast<uintptr_t*>(&InstallRadar), "InstallRadarHook");
+            if(result) {
+                hud_data.is_patched = true;
+            } else {
+                hud_data.is_patched = true;
+            }
+            #endif
         }
     }
 }

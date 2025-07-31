@@ -36,7 +36,7 @@ import com.arizona.game.BuildConfig;
 import com.arizona.launcher.util.UtilsKt;
 import ru.mrlargha.commonui.core.UIElementID;
 import ru.mrlargha.commonui.elements.authorization.presentation.screen.RegistrationVideoBackground;
-import ru.mrlargha.commonui.utils.FirebaseConfigHelper;
+import com.miami.game.core.connection.resolver.FirebaseConfigHelper;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import android.widget.LinearLayout;
 import androidx.preference.PreferenceManager;
@@ -59,7 +59,7 @@ public class InitGamePatch {
     public native static void versionFix();
     public native static void setChatPosition(float pos_x, float pos_y);
     public native static void setActivity(Object activity);
-    public native static void setDefaultHud();
+    public native static void setHudType(int hud, int radar);
 
     private static boolean isAssetExists(Context context, String fileName) {
         try {
@@ -284,6 +284,7 @@ public class InitGamePatch {
                     loadLib("monetloader");
                 }
             } else {
+                if(isCustomServer()) setServer(0, 0);
                 loadLib("samp" + (defaultSharedPreferences.getInt(SettingsPatch.GAME_VERSION, BuildConfig.VERSION_CODE) != BuildConfig.VERSION_CODE ? defaultSharedPreferences.getInt(SettingsPatch.GAME_VERSION, 0) : ""));
                 loadNativeMod(targetActivity);
                 
@@ -346,6 +347,8 @@ public class InitGamePatch {
         }
         InitGamePatch.setActivity(context);
 
+        SharedPreferences defaultSharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
+
         if (!Objects.equals(Build.CPU_ABI, "arm64-v8a"))
         {
             if(SettingsPatch.getSettingsKeyValue(SettingsPatch.IS_VERSION_HIDED))
@@ -363,13 +366,11 @@ public class InitGamePatch {
             Log.d("arzmod-initgame-module", "Enabling custom server fix...");
             InitGamePatch.installPacketsFix();
         }
-        if(SettingsPatch.getSettingsKeyValue(SettingsPatch.IS_DEFAULT_HUD)) {
-            try {
-                InitGamePatch.setDefaultHud();
-            } catch (Exception e) {
-                Log.w("arzmod-initgame-module", "Failed to set default HUD: " + e.getMessage());
-            }
-        }
+
+        int hud_type = defaultSharedPreferences.getInt(SettingsPatch.HUD_TYPE, 3);
+        int radar_type = defaultSharedPreferences.getInt(SettingsPatch.RADAR_TYPE, 0);
+
+        if(hud_type != 3 || radar_type != 0) InitGamePatch.setHudType(hud_type, radar_type);
     }
 
     public static String formatVersion(int number) {
@@ -498,25 +499,25 @@ public class InitGamePatch {
                 int id = server.getInt("id");
                 int serverid = server.getInt("serverid");
                 
-                if (!Objects.equals(Build.CPU_ABI, "arm64-v8a"))
-                { 
-                    if (id == 0 && serverid == 0) {
-                        return true;
-                    }
-                }
-                else 
-                {
-                    if (settings.getJSONObject("client").has("test")) {
-                        JSONObject test = settings.getJSONObject("client").getJSONObject("test");
-                        if (test.has("ip") && test.has("port")) {
-                            String ip = test.getString("ip");
-                            int port = test.getInt("port");
-                            if (!ip.isEmpty() && port > 0) {
-                                return true;
-                            }
+                // if (!Objects.equals(Build.CPU_ABI, "arm64-v8a"))
+                // { 
+                //     if (id == 0 && serverid == 0) {
+                //         return true;
+                //     }
+                // }
+                // else 
+                // {
+                if (settings.getJSONObject("client").has("test")) {
+                    JSONObject test = settings.getJSONObject("client").getJSONObject("test");
+                    if (test.has("ip") && test.has("port")) {
+                        String ip = test.getString("ip");
+                        int port = test.getInt("port");
+                        if (!ip.isEmpty() && port > 0) {
+                            return true;
                         }
                     }
                 }
+                // }
             }
         } catch (Exception e) {
             Log.e("arzmod-initgame-module", "Failed to check settings.json: " + e.getMessage());

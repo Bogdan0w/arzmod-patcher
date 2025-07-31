@@ -12,7 +12,7 @@ import com.squareup.picasso.Picasso;
 
 public class GamePatches {
     public static boolean isHudVisible(Hud hud, boolean isDefaultHud) {
-        if(SettingsPatch.getSettingsKeyValue(SettingsPatch.IS_DEFAULT_HUD)) {
+        if(SettingsPatch.getSettingsKeyValue(SettingsPatch.IS_UNITY_ELEMENTS) && SettingsPatch.getSettingsKeyInt(SettingsPatch.HUD_TYPE) != 3) {
             hud.binding.leftMenu.getRoot().setVisibility(View.INVISIBLE);
             hud.binding.hudContainer.setVisibility(View.INVISIBLE);
             hud.binding.hudServerInfoContainer.setVisibility(View.VISIBLE);

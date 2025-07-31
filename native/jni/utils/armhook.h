@@ -31,9 +31,11 @@ void InitHookStuff(const char* lib_name);
 template <size_t N>
 std::string patternToHexString(const char (&pattern)[N]) {
     std::ostringstream oss;
-    for (size_t i = 0; i < N; ++i) {
-        oss << std::hex << std::setw(2) << std::setfill('0')
+    for (size_t i = 0; i < N - 1; ++i) {
+        oss << std::uppercase << std::hex << std::setw(2) << std::setfill('0')
             << (static_cast<unsigned>(static_cast<unsigned char>(pattern[i])));
+        if (i != N - 2)
+            oss << ' ';
     }
     return oss.str();
 }
@@ -78,7 +80,7 @@ int PatternHook(const char(&pattern)[N], uintptr_t start, size_t length, uintptr
         
         if(tag) {
             #ifdef RELEASE_BUILD
-                LOGI("[%d] Hooks installed successfully (%s)", bit, tag, );
+                LOGI("[%d] Hooks installed successfully (%s)", bit, tag);
             #else
                 #ifdef __arm__
                     LOGI("[%d] Hooks installed successfully (%s), address: %x (static %x)", bit, tag, (uintptr_t)func_addr, (uintptr_t)func_addr - (uintptr_t)start);
@@ -91,7 +93,7 @@ int PatternHook(const char(&pattern)[N], uintptr_t start, size_t length, uintptr
     }
     else {
         if(tag) {
-            LOGE("[%d] Can't find offset from pattern %s (%s)", bit, pattern, tag);
+            LOGE("[%d] Can't find offset from pattern %s (%s)", bit, pattern_str.c_str(), tag);
         }
         return 0;
     }
