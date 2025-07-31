@@ -45,23 +45,6 @@ function main()
   -- end)
 end
 
-function sampev.onInitGame(_, hostName)
-  local success, settings = pcall(cjson.decode, io.open(getGameDirectory().."/SAMP/settings.json"):read("*a"))
-  if success then 
-    if settings.client.server.id == 0 and (settings.client.server.serverid == 0 or settings.client.server.serverid == 1) then
-      serverName = ((settings.client.server.id == 0 and settings.client.server.serverid == 0) and hostName or "")
-      local headers = {
-        ["accept"] = "*/*",
-        ["Upgrade-Insecure-Requests"] = "1"
-      }
-      httpRequest('POST', 'https://radarebot.hhos.net/api/setserver', {data={name=serverName}, headers=headers}, function(response, code, headers, status)
-        print(response.text)
-      end)
-    end
-  end
-end
-
-
 -- function UDPRecieve(data)
 --   local success, data = pcall(cjson.decode, data)
 --   if success and data.command then
