@@ -26,11 +26,11 @@ struct VersionStringData {
 };
 static VersionStringData version_data;
 
-void (*InstallVersionString)(int param_1,int param_2,int param_3) = nullptr;
-void InstallVersionStringHook(int param_1,int param_2,int param_3)
+void (*InstallVersionString)(int param_1) = nullptr;
+void InstallVersionStringHook(int param_1)
 {
     version_data.saved_dest = (char*)(param_1 + 0x53);
-    InstallVersionString(param_1, param_2, param_3);
+    InstallVersionString(param_1);
     
     char version[32] = {0};
     char commit[32] = {0};

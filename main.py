@@ -762,6 +762,32 @@ def redistribute_smali_files(source_folder, base_dir, method_limit=50000):
 	
 	print(f"Часть smali-файлов из {source_folder} перемещена в {new_smali_path}")
 
+def move_and_cleanup(src, dst):
+    if not os.path.exists(src):
+        print(f"Источник {src} не найден.")
+        return
+    
+    if not os.path.exists(dst):
+        os.makedirs(dst)
+    
+    for item in os.listdir(src):
+        s = os.path.join(src, item)
+        d = os.path.join(dst, item)
+        if os.path.exists(d):
+            if os.path.isdir(s) and os.path.isdir(d):
+                shutil.copytree(s, d, dirs_exist_ok=True)
+                shutil.rmtree(s)
+            else:
+                print(f"Конфликт: {d} уже существует, пропускаю {s}")
+        else:
+            shutil.move(s, d)
+    
+    if os.path.exists(src) and not os.listdir(src):
+        os.rmdir(src)
+        print(f"Папка {src} удалена.")
+    else:
+        print(f"Папка {src} не пуста, удаление пропущено.")
+
 def build_native_lib(folder_name, arch):
     folder_path = os.path.join(working_dir, folder_name)
     if not os.path.exists(folder_path):
@@ -927,6 +953,20 @@ def update_classes(apk_path):
 		return
 
 	classes_dir = f"{working_dir}/arzmob-classes"
+
+	if os.path.exists(classes_dir):
+		for root, dirs, files in os.walk(classes_dir):
+			for file in files:
+				if file.startswith("classes"):
+					file_path = os.path.join(root, file)
+					try:
+						os.remove(file_path)
+						print(f"Удален файл: {file_path}")
+					except Exception as e:
+						print(f"Ошибка при удалении файла {file_path}: {e}")
+		print("Очищены все файлы classes*.jar")
+	else:
+		print(f"Директория {classes_dir} не существует")
 	
 	try:
 		with zipfile.ZipFile(apk_path, 'r') as apk:
@@ -1017,6 +1057,9 @@ def arzmod_patch():
 	src_path = app_dir + f"/{arz_src_path}"
 	ui_path = app_dir + f"/{arz_ui_path}"
 	manifest_path = app_dir + '/AndroidManifest.xml'
+
+	move_and_cleanup(app_dir + "/smali_classes6", ui_path)
+	move_and_cleanup(src_path + "/ru/mrlargha", ui_path + "/ru/mrlargha")
 	
 
 	# PACKAGE NAME PATCH
@@ -1580,8 +1623,6 @@ def install_game_libraries():
 	
 		# ADD GAME VERSION
 		add_game_version("actual", 2)
-		if project == ARIZONA_MOBILE:
-			add_game_version(1601)
 
 
 

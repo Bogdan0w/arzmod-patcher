@@ -9,6 +9,7 @@ def compile_to_dex(src_dir):
     current_directory = os.getcwd().replace('\\', '/')
 
     classes_dir = os.path.join(current_directory, 'arzmob-classes')
+    imports_dir = os.path.join(classes_dir, 'imports')
 
     if platform.system() == 'Windows':
         classpath_sep = ";"
@@ -17,7 +18,8 @@ def compile_to_dex(src_dir):
     else:
         raise Exception("Unsupported operating system")
 
-    jar_files = [os.path.join(classes_dir, f) for f in os.listdir(classes_dir) if f.endswith('.jar')]
+    imports_files = [os.path.join(imports_dir, f) for f in os.listdir(imports_dir) if f.endswith('.jar')]
+    jar_files = [os.path.join(classes_dir, f) for f in os.listdir(classes_dir) if f.endswith('.jar')] + imports_files
     classpath = classpath_sep.join(jar_files)
 
     out_dir = os.path.join(src_dir, "out")
@@ -44,7 +46,11 @@ def compile_to_dex(src_dir):
         print(f"Running: {javac_command}")
         subprocess.check_call(javac_command, shell=True)
 
-        dx_command = f'dx --dex --output="{dex_file}" "{out_dir}"'
+        dx_command = 'dx --dex --output="{}" "{}" {}'.format(
+            dex_file,
+            out_dir,
+            " ".join(['"{}"'.format(f) for f in imports_files])
+        )
         print(f"Running: {dx_command}")
         subprocess.check_call(dx_command, shell=True)
 

@@ -2,6 +2,7 @@ package com.arzmod.radare;
 
 import com.arzmod.radare.AppContext;
 import com.arzmod.radare.FirebaseAdd;
+import com.arzmod.radare.AppAds;
 import android.widget.Toast;
 import android.util.Log;
 import android.content.Context;
@@ -169,6 +170,7 @@ public class ApplicationStart {
         }
 
         Toast.makeText(context, Build.CPU_ABI + " " + BuildConfig.VERSION_NAME + " " + (BuildConfig.GIT_BUILD  ? "arzmod_community" : "arzmod"), Toast.LENGTH_SHORT).show();
+        //AppAds.initializeAndShow();
     }
 
     public static void showBanner() {

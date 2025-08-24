@@ -9,9 +9,6 @@ public class GameVersions {
 
     static {
         versions.put(BuildConfig.VERSION_CODE, BuildConfig.VERSION_CODE + " actual");
-        if (BuildConfig.IS_ARIZONA) {
-            versions.put(1601, "1601 april archive");
-        }
     }
 
     public static Map<Integer, String> getVersions() {

@@ -5,7 +5,7 @@ key/keystore.jks
 .vscode/
 
 # Ignore builds
-arzmob-classes/*.jar
+arzmob-classes/classes*.jar
 app-debug/
 native/obj
 *.apk
