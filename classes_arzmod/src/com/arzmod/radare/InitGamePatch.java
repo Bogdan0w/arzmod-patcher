@@ -3,6 +3,8 @@ package com.arzmod.radare;
 import android.content.res.AssetManager;
 import android.os.Build;
 import android.os.Environment;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
@@ -36,6 +38,7 @@ import com.arizona.game.BuildConfig;
 import com.arizona.launcher.util.UtilsKt;
 import ru.mrlargha.commonui.core.UIElementID;
 import ru.mrlargha.commonui.elements.authorization.presentation.screen.RegistrationVideoBackground;
+import com.miami.game.feature.download.dialog.ui.connection.ConnectionHolder;
 import com.miami.game.core.connection.resolver.FirebaseConfigHelper;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import android.widget.LinearLayout;
@@ -46,6 +49,11 @@ import java.lang.reflect.Field;
 import android.app.Activity;
 import java.lang.reflect.Method;
 import java.lang.NoSuchFieldException;
+import com.arzmod.radare.DebugOverlay;
+import com.arzmod.radare.GamePatches;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
 
 public class InitGamePatch {
     private static Context context;
@@ -322,6 +330,29 @@ public class InitGamePatch {
 
             UtilsKt.initZip(context);
 
+            if(BuildConfig.ARZMOD_DEBUG)
+            {
+                AppContext.getGTASAActivity(new AppContext.GTASAActivityCallback() {
+                    @Override
+                    public void onResult(Activity activity) {
+                        Main.moduleDialog("last repatch at: " + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(new Date(BuildConfig.BUILD_TIME)));
+                        int gameMonitorTimer = Timers.startTimer(1000, new Timers.TimerCallback() {
+                            @Override
+                            public void onTimerTick(int timerId, int tickCount, long currentTime) {
+                                DebugOverlay.show(activity, "ARZMOD-DEBUG"
+                                + " | version: " + BuildConfig.VERSION_NAME 
+                                + " | code: " + BuildConfig.VERSION_CODE 
+                                + " | commit: " + BuildConfig.GIT_HASH.substring(0, 7) 
+                                + " | core rebuild: " + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(new Date(BuildConfig.BUILD_TIME)) 
+                                + " | arch: " + Build.CPU_ABI 
+                                + " | time: " + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(new Date(currentTime)));
+                            }
+                        });
+                    }
+                });
+            }
+
+            GamePatches.onSetConnectState("Подключение к игре...");
             Log.d("arzmod-initgame-module", "game started. by ARZMOD (arzmod.com) & Community (t.me/cleodis)");
         } catch (Exception e) {
             e.printStackTrace();
@@ -351,15 +382,12 @@ public class InitGamePatch {
 
         if (!Objects.equals(Build.CPU_ABI, "arm64-v8a"))
         {
-            if(SettingsPatch.getSettingsKeyValue(SettingsPatch.IS_VERSION_HIDED))
-            {
-                InitGamePatch.setVersionString("");
-            }
             if(SettingsPatch.getSettingsKeyValue(SettingsPatch.CHAT_POSITION_ENABLED))
             {
                 ChatPosition chatPosition = SettingsPatch.getChatPosition();
                 if(chatPosition.enabled) InitGamePatch.setChatPosition(chatPosition.x, chatPosition.y);
             }
+            if(SettingsPatch.getSettingsKeyValue(SettingsPatch.IS_VERSION_HIDED)) InitGamePatch.setVersionString("");
         }
         if(isCustomServer())
         {
@@ -370,7 +398,7 @@ public class InitGamePatch {
         int hud_type = defaultSharedPreferences.getInt(SettingsPatch.HUD_TYPE, 3);
         int radar_type = defaultSharedPreferences.getInt(SettingsPatch.RADAR_TYPE, 0);
 
-        if(hud_type != 3 || radar_type != 0) InitGamePatch.setHudType(hud_type, radar_type);
+        if((!Objects.equals(Build.CPU_ABI, "arm64-v8a") && (hud_type != 3 || radar_type != 0)) || (Objects.equals(Build.CPU_ABI, "arm64-v8a") && hud_type != 3)) InitGamePatch.setHudType(hud_type, radar_type);
     }
 
     public static String formatVersion(int number) {
@@ -605,7 +633,12 @@ public class InitGamePatch {
 
     public static void setAwaitText(RegistrationVideoBackground registrationVideoBackground, String text)
     {
-        if(text.equals("Подключились. Входим в игру...") && (SettingsPatch.getSettingsKeyInt(SettingsPatch.VIDEO_HIDE_STEP) == 2 || isCustomServer())) hideVideo(registrationVideoBackground, 999);
+        GamePatches.onSetConnectState(text);
+        if(text.equals("Подключились. Входим в игру..."))
+        {
+            if(SettingsPatch.getSettingsKeyInt(SettingsPatch.VIDEO_HIDE_STEP) == 2 || isCustomServer()) hideVideo(registrationVideoBackground, 999);
+        }
+        
     }
 
     public static void hideVideo(RegistrationVideoBackground registrationVideoBackground, int step) {

@@ -5,6 +5,7 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
@@ -117,7 +118,8 @@ public class FirebaseAdd extends FirebaseMessagingService {
                         }
                         String token = task.getResult();
                         Log.d(TAG, "Current FCM Token: " + token);
-                        SettingsPatch.getSettingsPreferences().edit().putString(SettingsConstants.TOKEN, token).apply();
+                        SharedPreferences sharedPreferences = SettingsPatch.getSettingsPreferences();
+                        if(sharedPreferences != null) sharedPreferences.edit().putString(SettingsConstants.TOKEN, token).apply();
                         FirebaseMessaging.getInstance().getToken()
                             .addOnCompleteListener(new OnCompleteListener<String>() {
                                 @Override

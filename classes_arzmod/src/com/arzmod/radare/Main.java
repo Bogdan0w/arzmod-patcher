@@ -30,7 +30,7 @@ public class Main {
     }
 
     public static void moduleDialog(String message) {
-        Context context = AppContext.getContext();
+        Context context = (Activity)AppContext.getActivity();
         if (context == null || message == null) {
             Log.e("arzmod-radare-module", "Context and message cannot be null");
             return;

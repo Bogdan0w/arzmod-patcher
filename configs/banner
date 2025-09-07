@@ -1,8 +1,8 @@
 {
-    "id": "1636update",
-    "width": 1300,
-    "height": 800,
-    "imageUrl": "https://raw.githubusercontent.com/idmkdev/arzmod-patcher/refs/heads/main/configs/images/1636.gif",
+    "id": "arzmodoptimizationupdate",
+    "width": 868,
+    "height": 162,
+    "imageUrl": "https://raw.githubusercontent.com/idmkdev/arzmod-patcher/refs/heads/main/configs/images/arzmodoptimizationupdate.jpg",
     "url": "https://t.me/CleoArizona/236",
     "isActive": true
 }

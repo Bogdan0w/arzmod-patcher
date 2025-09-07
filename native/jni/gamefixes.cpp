@@ -26,35 +26,38 @@ struct VersionStringData {
 };
 static VersionStringData version_data;
 
-void (*InstallVersionString)(int param_1) = nullptr;
-void InstallVersionStringHook(int param_1)
+void (*VersionRenderer)(int param_1, int param_2) = nullptr;
+void VersionRendererHook(int param_1, int param_2)
 {
-    version_data.saved_dest = (char*)(param_1 + 0x53);
-    InstallVersionString(param_1);
+    if(version_data.saved_dest == nullptr && strlen((char*)(param_1 + 0x53)) > 0)
+    {
+        version_data.saved_dest = (char*)(param_1 + 0x53);
+        
+        char version[32] = {0};
+        char commit[32] = {0};
+        
+        sscanf(version_data.saved_dest, "Ver: %[^,], Native: %[^-]", version, commit);
+        
+        if (version_data.saved_version) free(version_data.saved_version);
+        version_data.saved_version = strdup(version);
+        
+        if (version_data.saved_commit) free(version_data.saved_commit);
+        version_data.saved_commit = strdup(commit);
     
-    char version[32] = {0};
-    char commit[32] = {0};
-    
-    sscanf(version_data.saved_dest, "Ver: %[^,], Native: %[^-]", version, commit);
-    
-    if (version_data.saved_version) free(version_data.saved_version);
-    version_data.saved_version = strdup(version);
-    
-    if (version_data.saved_commit) free(version_data.saved_commit);
-    version_data.saved_commit = strdup(commit);
-
-    if(version_data.saved_string) {
-        std::string str(version_data.saved_string);
-        if(str.find("{version}") != std::string::npos) {
-            str.replace(str.find("{version}"), 9, version_data.saved_version);
+        if(version_data.saved_string) {
+            std::string str(version_data.saved_string);
+            if(str.find("{version}") != std::string::npos) {
+                str.replace(str.find("{version}"), 9, version_data.saved_version);
+            }
+            if(str.find("{commit}") != std::string::npos) {
+                str.replace(str.find("{commit}"), 8, version_data.saved_commit);
+            }
+            strcpy(version_data.saved_dest, str.c_str());
+        } else {
+            *version_data.saved_dest = '\0';
         }
-        if(str.find("{commit}") != std::string::npos) {
-            str.replace(str.find("{commit}"), 8, version_data.saved_commit);
-        }
-        strcpy(version_data.saved_dest, str.c_str());
-    } else {
-        *version_data.saved_dest = '\0';
     }
+    VersionRenderer(param_1, param_2);
 }
 
 
@@ -115,6 +118,10 @@ void InstallHudHook(long param_1)
 }
 #endif
 
+
+
+
+
 extern "C" {
     #ifdef __arm__
     JNIEXPORT void JNICALL
@@ -144,7 +151,7 @@ extern "C" {
 
         if(!version_data.is_patched)
         {
-            int result = PatternHook(INSTALL_VERSION_STRING_PATTERN, libHandle, GetLibrarySize(libName), reinterpret_cast<uintptr_t>(InstallVersionStringHook), reinterpret_cast<uintptr_t*>(&InstallVersionString), "InstallVersionStringHook");
+            int result = PatternHook(VERSION_RENDER_PATTERN, libHandle, GetLibrarySize(libName), reinterpret_cast<uintptr_t>(VersionRendererHook), reinterpret_cast<uintptr_t*>(&VersionRenderer), "VersionRendererHook");
             if(result) {
                 version_data.is_patched = true;
             } else {

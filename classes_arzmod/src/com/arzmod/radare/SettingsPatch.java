@@ -92,6 +92,7 @@ public class SettingsPatch {
         
         public abstract View createView(Context context);
         public abstract Object getCurrentValue();
+        public abstract Object getDefaultValue();
     }
 
     public static class BooleanSetting extends AbstractSetting {
@@ -105,6 +106,11 @@ public class SettingsPatch {
         @Override
         public Boolean getCurrentValue() {
             return preferences.getBoolean(settingKey, defaultValue);
+        }
+
+        @Override
+        public Boolean getDefaultValue() {
+            return defaultValue;
         }
 
         @Override
@@ -126,7 +132,7 @@ public class SettingsPatch {
                     public void onClick(View v) {
                         AlertDialog.Builder builder = new AlertDialog.Builder(context);
                         builder.setTitle(title);
-                        builder.setMessage(createClickableLinksFromDescription(description, context));
+                        builder.setMessage(createClickableLinksFromDescription(description));
                         builder.setPositiveButton("OK", null);
                         AlertDialog dialog = builder.create();
                         dialog.show();
@@ -197,6 +203,11 @@ public class SettingsPatch {
         }
 
         @Override
+        public Integer getDefaultValue() {
+            return defaultValue;
+        }
+
+        @Override
         public View createView(Context context) {
             LinearLayout layout = new LinearLayout(context);
             layout.setOrientation(LinearLayout.HORIZONTAL);
@@ -215,7 +226,7 @@ public class SettingsPatch {
                     public void onClick(View v) {
                         AlertDialog.Builder builder = new AlertDialog.Builder(context);
                         builder.setTitle(title);
-                        builder.setMessage(createClickableLinksFromDescription(description, context));
+                        builder.setMessage(createClickableLinksFromDescription(description));
                         builder.setPositiveButton("OK", null);
                         AlertDialog dialog = builder.create();
                         dialog.show();
@@ -331,6 +342,11 @@ public class SettingsPatch {
         @Override
         public Boolean getCurrentValue() {
             return preferences.getBoolean(settingKey, false);
+        }
+
+        @Override
+        public Boolean getDefaultValue() {
+            return false;
         }
 
         private void showEditDialog(Context context) {
@@ -579,7 +595,7 @@ public class SettingsPatch {
                     public void onClick(View v) {
                         AlertDialog.Builder builder = new AlertDialog.Builder(context);
                         builder.setTitle(title);
-                        builder.setMessage(createClickableLinksFromDescription(description, context));
+                        builder.setMessage(createClickableLinksFromDescription(description));
                         builder.setPositiveButton("OK", null);
                         AlertDialog dialog = builder.create();
                         dialog.show();
@@ -668,6 +684,7 @@ public class SettingsPatch {
     }
 
     private static Context context;
+    private static Activity activity;
     private static List<AbstractSetting> settingsList;
 
     public static final String CHAT_FONT_SIZE = "chat_fontsize";
@@ -694,6 +711,7 @@ public class SettingsPatch {
     public static final String IS_VERSION_HIDED = "is_version_hided";
     public static final String IS_SKIP_VERIFY = "is_skip_verify";
     public static final String IS_ACTUAL_VERSION = "is_actual_version";
+    public static final String IS_DEV_HUNGRY = "is_dev_hungry";
     public static final String VIDEO_HIDE_STEP = "video_hide_step";
     public static final String HUD_TYPE = "hud_type";
     public static final String RADAR_TYPE = "radar_type";
@@ -743,6 +761,7 @@ public class SettingsPatch {
             settingsList.add(new SelectableValueSetting("Загрузчик модов", "Альтернативное название - ModLoader", MODLOADER_STATE, 0, MapsKt.mapOf(TuplesKt.to(0, "Выкл"), TuplesKt.to(1, "Текстуры"), TuplesKt.to(2, "Вкл")), sharedPreferences));
             settingsList.add(new SelectableValueSetting("Версия игры", "Если вы испытываете проблемы на текущей версии игры - выберите другую.\nНекоторые функции, такие как Скрытие строки версии и Позиция чата могут не работать на старых версиях", GAME_VERSION, 0, GameVersions.getVersions(), sharedPreferences));
         }
+        settingsList.add(new BooleanSetting("Оставить разработчика мода без еды", "При включении функции вы не увидите баннер-рекламу сверху. (Для полного скрытия еще и баннера слева можно перейти на offline версию - https://github.com/idmkdev/arzmod-patcher/releases/latest там нет никакой принудительной рекламы от ARZMOD)", IS_DEV_HUNGRY, BuildConfig.GIT_BUILD, sharedPreferences));
         return settingsList;
     }
 
@@ -759,8 +778,13 @@ public class SettingsPatch {
                 ClickableSpan clickableSpan = new ClickableSpan() {
                     @Override
                     public void onClick(View widget) {
-                        Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://" + url));
-                        context.startActivity(intent);
+                        Activity activity = AppContext.getActivity();
+                        if(activity == null) Log.e("arzmod-settings-module", "Activity is null (clickablespan)");
+                        else
+                        {
+                            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://" + url));
+                            activity.startActivity(intent);
+                        }
                     }
                     @Override
                     public void updateDrawState(TextPaint ds) {
@@ -775,24 +799,172 @@ public class SettingsPatch {
         return message;
     }
 
+    private static void showResetConfirmationDialog(Activity activity, SharedPreferences sharedPreferences, AlertDialog parentDialog) {
+        AlertDialog.Builder confirmBuilder = new AlertDialog.Builder(activity);
+        
+        LinearLayout mainLayout = new LinearLayout(activity);
+        mainLayout.setOrientation(LinearLayout.VERTICAL);
+        mainLayout.setPadding(40, 30, 40, 30);
+        
+        TextView titleView = new TextView(activity);
+        titleView.setText("⚠️ Сброс настроек");
+        titleView.setTextSize(18);
+        titleView.setTextColor(Color.WHITE);
+        titleView.setTypeface(null, android.graphics.Typeface.BOLD);
+        titleView.setGravity(Gravity.CENTER);
+        titleView.setPadding(0, 0, 0, 20);
+        mainLayout.addView(titleView);
+        
+        TextView messageView = new TextView(activity);
+        messageView.setText("Сбросить ВСЕ настройки к значениям по умолчанию?\n\nЭто действие нельзя отменить!");
+        messageView.setTextSize(14);
+        messageView.setTextColor(Color.WHITE);
+        messageView.setGravity(Gravity.LEFT);
+        messageView.setLineSpacing(2, 1.1f);
+        messageView.setPadding(0, 0, 0, 30);
+        mainLayout.addView(messageView);
+        
+        LinearLayout buttonsLayout = new LinearLayout(activity);
+        buttonsLayout.setOrientation(LinearLayout.HORIZONTAL);
+        buttonsLayout.setGravity(Gravity.CENTER);
+        
+        android.widget.Button cancelButton = new android.widget.Button(activity);
+        cancelButton.setText("Отмена");
+        cancelButton.setTextColor(Color.WHITE);
+        cancelButton.setBackgroundColor(Color.parseColor("#757575"));
+        cancelButton.setPadding(20, 10, 20, 10);
+        
+        android.widget.Button confirmButton = new android.widget.Button(activity);
+        confirmButton.setText("Да, сбросить");
+        confirmButton.setTextColor(Color.WHITE);
+        confirmButton.setBackgroundColor(Color.parseColor("#F44336"));
+        confirmButton.setPadding(20, 10, 20, 10);
+        
+        LinearLayout.LayoutParams buttonParams = new LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.WRAP_CONTENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT
+        );
+        buttonParams.setMargins(10, 0, 10, 0);
+        cancelButton.setLayoutParams(buttonParams);
+        confirmButton.setLayoutParams(buttonParams);
+        
+        buttonsLayout.addView(cancelButton);
+        buttonsLayout.addView(confirmButton);
+        mainLayout.addView(buttonsLayout);
+        
+        confirmBuilder.setView(mainLayout);
+        
+        AlertDialog confirmDialog = confirmBuilder.create();
+        if (confirmDialog.getWindow() != null) {
+            confirmDialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.parseColor("#FF424242")));
+        }
+        
+        cancelButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                confirmDialog.dismiss();
+            }
+        });
+        
+        confirmButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                resetAllSettings(activity, sharedPreferences);
+                parentDialog.dismiss();
+                confirmDialog.dismiss();
+                Toast.makeText(activity, "Настройки сброшены", Toast.LENGTH_LONG).show();
+                new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        openSettingsMenu();
+                    }
+                }, 500);
+            }
+        });
+        
+        confirmDialog.show();
+    }
+
+    private static void resetAllSettings(Activity activity, SharedPreferences sharedPreferences) {
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        
+        if (settingsList == null) {
+            settingsList = getSettingsList(sharedPreferences);
+        }
+        
+        if (settingsList != null) {
+            for (AbstractSetting setting : settingsList) {
+                Object defaultValue = setting.getDefaultValue();
+                String key = setting.getSettingKey();
+                
+                if (setting instanceof BooleanSetting) {
+                    editor.putBoolean(key, (Boolean) defaultValue);
+                } else if (setting instanceof SelectableValueSetting) {
+                    editor.putInt(key, (Integer) defaultValue);
+                } else if (setting instanceof ChatPositionSetting) {
+                    editor.putBoolean(key, false);
+                }
+            }
+        }
+        
+        editor.apply();
+    }
+
     public static void openSettingsMenu() {
-        context = AppContext.getContext();
-        if (context == null) {
-            Log.e("arzmod-settings-module", "Context is null (openSettingsMenu)");
+        activity = AppContext.getActivity();
+        if (activity == null) {
+            Log.e("arzmod-settings-module", "Activity is null (openSettingsMenu)");
             return;
         }
 
-        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
+        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(activity);
         settingsList = getSettingsList(sharedPreferences);
 
-        AlertDialog.Builder builder = new AlertDialog.Builder(context);
-        builder.setTitle("Настройки ARZMOD");
+        AlertDialog.Builder builder = new AlertDialog.Builder(activity);
+        
+        LinearLayout titleLayout = new LinearLayout(activity);
+        titleLayout.setOrientation(LinearLayout.HORIZONTAL);
+        titleLayout.setGravity(Gravity.CENTER_VERTICAL);
+        titleLayout.setPadding(20, 20, 20, 20);
+        
+        TextView titleView = new TextView(activity);
+        titleView.setText("Настройки ARZMOD");
+        titleView.setTextSize(20);
+        titleView.setTextColor(Color.WHITE);
+        titleView.setTypeface(null, android.graphics.Typeface.BOLD);
+        
+        View spacer = new View(activity);
+        LinearLayout.LayoutParams spacerParams = new LinearLayout.LayoutParams(0, 0, 1f);
+        spacer.setLayoutParams(spacerParams);
+        
+        android.widget.Button resetButton = new android.widget.Button(activity);
+        resetButton.setText("🔄 Сброс");
+        resetButton.setTextSize(12);
+        resetButton.setTextColor(Color.WHITE);
+        resetButton.setPadding(16, 8, 16, 8);
+        resetButton.setElevation(2);
+        
+        android.graphics.drawable.GradientDrawable buttonShape = new android.graphics.drawable.GradientDrawable();
+        buttonShape.setShape(android.graphics.drawable.GradientDrawable.RECTANGLE);
+        buttonShape.setCornerRadius(20);
+        buttonShape.setColors(new int[]{
+            Color.parseColor("#40666666"),
+            Color.parseColor("#80666666")
+        });
+        buttonShape.setOrientation(android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM);
+        resetButton.setBackground(buttonShape);
+        
+        titleLayout.addView(titleView);
+        titleLayout.addView(spacer);
+        titleLayout.addView(resetButton);
+        
+        builder.setCustomTitle(titleLayout);
 
-        LinearLayout mainLayout = new LinearLayout(context);
+        LinearLayout mainLayout = new LinearLayout(activity);
         mainLayout.setOrientation(LinearLayout.VERTICAL);
         mainLayout.setPadding(0, 20, 0, 20);
 
-        TextView descriptionView = new TextView(context);
+        TextView descriptionView = new TextView(activity);
         Map<String, String> links = new HashMap<>();
         links.put("t.me/CleoArizona", "t.me/CleoArizona");
         links.put("arzmod.com", "arzmod.com");
@@ -805,12 +977,12 @@ public class SettingsPatch {
         descriptionView.setPadding(40, 0, 40, 20);
         mainLayout.addView(descriptionView);
 
-        View divider = new View(context);
+        View divider = new View(activity);
         divider.setBackgroundColor(Color.parseColor("#4DFFFFFF"));
         divider.setLayoutParams(new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 1));
         mainLayout.addView(divider);
 
-        String packageName = context.getPackageName();
+        String packageName = activity.getPackageName();
 
         for (AbstractSetting setting : settingsList) {
             setting.setCallback(new SettingChangeCallback() {
@@ -819,7 +991,7 @@ public class SettingsPatch {
                     if (key.equals(IS_MODE_MODS)) {
                         boolean isEnabled = (Boolean) newValue;
                         if (isEnabled) {
-                            new AlertDialog.Builder(context)
+                            new AlertDialog.Builder(activity)
                                 .setTitle("Проверка обновлений кеша игры")
                                 .setMessage("Перезапустите лаунчер для корректной работы.")
                                 .setPositiveButton("OK", null)
@@ -831,31 +1003,39 @@ public class SettingsPatch {
                         Integer choosenVersion = (Integer) newValue;
                         if(choosenVersion != BuildConfig.VERSION_CODE)
                         {
-                            new AlertDialog.Builder(context)
+                            new AlertDialog.Builder(activity)
                                 .setTitle("Устаревшая версия игры")
                                 .setMessage("Некоторые функции, такие как Скрытие строки версии и Позиция чата могут не работать на старых версиях. Если ваша игра вылетает, проверьте данные настройки")
                                 .setPositiveButton("OK", null)
                                 .show();
                         } 
 
-                    }
+                    } else if (key.equals(IS_DEV_HUNGRY)) {
+                        boolean isEnabled = (Boolean) newValue;
+                        if (isEnabled) {
+                            AppAds.hideBanner();
+                        } else {
+                            Toast.makeText(activity, "Спасибо за поддержку! :>", Toast.LENGTH_SHORT).show();
+                            AppAds.initializeAndShow();
+                        }
+                    } 
                     return true;
                 }
             });
             
-            View settingView = setting.createView(context);
+            View settingView = setting.createView(activity);
             if (settingView.getParent() != null) {
                 ((ViewGroup) settingView.getParent()).removeView(settingView);
             }
             mainLayout.addView(settingView);
             
-            View itemDivider = new View(context);
+            View itemDivider = new View(activity);
             itemDivider.setBackgroundColor(Color.parseColor("#4DFFFFFF"));
             itemDivider.setLayoutParams(new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 1));
             mainLayout.addView(itemDivider);
         }
 
-        android.widget.ScrollView scrollView = new android.widget.ScrollView(context);
+        android.widget.ScrollView scrollView = new android.widget.ScrollView(activity);
         scrollView.addView(mainLayout);
 
         builder.setView(scrollView);
@@ -863,11 +1043,19 @@ public class SettingsPatch {
 
         AlertDialog dialog = builder.create();
         if (dialog.getWindow() != null) {
-            dialog.getWindow().setBackgroundDrawable(context.getResources().getDrawable(BuildConfig.IS_ARIZONA ? com.miami.game.core.drawable.resources.R.drawable.bg_arizona : com.miami.game.core.drawable.resources.R.drawable.bg_rodina));
+            dialog.getWindow().setBackgroundDrawable(activity.getResources().getDrawable(BuildConfig.IS_ARIZONA ? com.miami.game.core.drawable.resources.R.drawable.bg_arizona : com.miami.game.core.drawable.resources.R.drawable.bg_rodina));
         }
+        
+        resetButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showResetConfirmationDialog(activity, sharedPreferences, dialog);
+            }
+        });
+        
         dialog.show();
 
-        TextView titleView = dialog.findViewById(android.R.id.title);
+        titleView = dialog.findViewById(android.R.id.title);
         if (titleView != null) {
             titleView.setTextColor(Color.WHITE);
         }
@@ -920,27 +1108,45 @@ public class SettingsPatch {
             return 0;
         }
 
+        if (settingsList == null) {
+            SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
+            settingsList = getSettingsList(sharedPreferences);
+        }
+
+        if (settingsList != null) {
+            for (AbstractSetting setting : settingsList) {
+                if (setting.getSettingKey().equals(key)) {
+                    if (setting instanceof SelectableValueSetting) {
+                        return (int)setting.getCurrentValue();
+                    }
+                    break;
+                }
+            }
+            
+        }
+
         return PreferenceManager.getDefaultSharedPreferences(context).getInt(key, 0);
     }
 
     public static void shareLogs() {
-        if (context == null) {
-            Log.e("arzmod-settings-module", "Context is null (shareLogs)");
+        activity = AppContext.getActivity();
+        if (activity == null) {
+            Log.e("arzmod-settings-module", "Activity is null (shareLogs)");
             return;
         }
 
-        File externalFilesDir = context.getExternalFilesDir(null);
+        File externalFilesDir = activity.getExternalFilesDir(null);
         if (externalFilesDir == null) {
             Log.e("arzmod-settings-module", "External files directory is null");
             return;
         }
 
-        String packageName = context.getPackageName();
+        String packageName = activity.getPackageName();
         List<File> logFiles = new ArrayList<>();
         logFiles.add(new File(externalFilesDir, "logcat/samp.log"));
         logFiles.add(new File(externalFilesDir, "AZVoice/azvoice.log"));
         logFiles.add(new File(externalFilesDir, "logcat/client.log"));
-        logFiles.add(new File(context.getExternalMediaDirs()[0], "monetloader/logs/monetloader.log"));
+        logFiles.add(new File(activity.getExternalMediaDirs()[0], "monetloader/logs/monetloader.log"));
 
         List<File> existingLogs = new ArrayList<>();
         for (File file : logFiles) {
@@ -950,7 +1156,7 @@ public class SettingsPatch {
         }
 
         if (existingLogs.isEmpty()) {
-            Toast.makeText(context, "Логи не найдены", Toast.LENGTH_SHORT).show();
+            Toast.makeText(activity, "Логи не найдены", Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -960,14 +1166,14 @@ public class SettingsPatch {
 
         ArrayList<Uri> uris = new ArrayList<>();
         for (File file : existingLogs) {
-            uris.add(FileProvider.getUriForFile(context, packageName + ".fileprovider", file));
+            uris.add(FileProvider.getUriForFile(activity, packageName + ".fileprovider", file));
         }
 
         shareIntent.putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris);
-        context.startActivity(Intent.createChooser(shareIntent, "Отправить логи"));
+        activity.startActivity(Intent.createChooser(shareIntent, "Отправить логи"));
     }
 
-    private static CharSequence createClickableLinksFromDescription(String description, Context context) {
+    private static CharSequence createClickableLinksFromDescription(String description) {
         if (description == null) return "";
         SpannableString spannable = new SpannableString(description);
         java.util.regex.Pattern urlPattern = java.util.regex.Pattern.compile("(https?://[\\w\\-._~:/?#\\[\\]@!$&'()*+,;=%]+)");
@@ -979,8 +1185,13 @@ public class SettingsPatch {
             spannable.setSpan(new ClickableSpan() {
                 @Override
                 public void onClick(View widget) {
-                    Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
-                    context.startActivity(intent);
+                    Activity activity = AppContext.getActivity();
+                    if(activity == null) Log.e("arzmod-settings-module", "Activity is null (clickablespan)");
+                    else
+                    {
+                        Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+                        activity.startActivity(intent);
+                    }
                 }
                 @Override
                 public void updateDrawState(TextPaint ds) {

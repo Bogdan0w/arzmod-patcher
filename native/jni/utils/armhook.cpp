@@ -8,7 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <sys/stat.h> 
+#include <sys/stat.h>
 #include <sys/mman.h>
 #include <cstdarg>
 #include <exception>
@@ -17,25 +17,19 @@
 
 #define HOOK_PROC "\x01\xB4\x01\xB4\x01\x48\x01\x90\x01\xBD\x00\xBF\x00\x00\x00\x00"
 
-uintptr_t mmap_start 	= 0;
-uintptr_t mmap_end		= 0;
-uintptr_t memlib_start	= 0;
-uintptr_t memlib_end	= 0;
+uintptr_t mmap_start    = 0;
+uintptr_t mmap_end      = 0;
+uintptr_t memlib_start  = 0;
+uintptr_t memlib_end    = 0;
 
-
+static size_t PAGE_COUNT = 4;
 
 void UnFuck(uintptr_t ptr)
 {
-    #ifdef __aarch64__
-        size_t pageSize = sysconf(_SC_PAGESIZE);
-        mprotect((void*)(ptr & ~(pageSize - 1)), pageSize, PROT_READ | PROT_WRITE | PROT_EXEC);
-    #elif __arm__
-        size_t pageSize = sysconf(_SC_PAGESIZE);
-        mprotect((void*)(ptr & ~(pageSize - 1)), pageSize, PROT_READ | PROT_WRITE | PROT_EXEC);
-    #else
-        #error "Unsupported architecture"
-    #endif
+    size_t pageSize = sysconf(_SC_PAGESIZE);
+    mprotect((void*)(ptr & ~(pageSize - 1)), pageSize, PROT_READ | PROT_WRITE | PROT_EXEC);
 }
+
 void NOP(uintptr_t addr, unsigned int count)
 {
     UnFuck(addr);
@@ -65,8 +59,6 @@ void WriteMemory(uintptr_t dest, uintptr_t src, size_t size)
     #elif __arm__
         cacheflush(dest, dest + size, 0);
         cacheflush(src, src + size, 0);
-    #else
-        #error "Unsupported architecture"
     #endif
 }
 
@@ -81,8 +73,6 @@ void ReadMemory(uintptr_t dest, uintptr_t src, size_t size)
     #elif __arm__
         cacheflush(dest, dest + size, 0);
         cacheflush(src, src + size, 0);
-    #else
-        #error "Unsupported architecture"
     #endif
 }
 
@@ -90,53 +80,73 @@ void InitHookStuff(const char* lib_name)
 {
     uintptr_t libHandle = FindLibrary(lib_name);
     if(libHandle == 0)
-	{
-		LOGE("ERROR: %s address not found!", lib_name);
-		return;
-	}
+    {
+        LOGE("ERROR: %s address not found!", lib_name);
+        return;
+    }
     size_t size = GetLibrarySize(lib_name);
     if (size == 0) {
         LOGE("Library size is zero");
         return;
     }
-	memlib_start = libHandle;
-	memlib_end = memlib_start + size;
+    memlib_start = libHandle;
+    memlib_end = memlib_start + size;
 
-	mmap_start = (uintptr_t)mmap(0, PAGE_SIZE, PROT_WRITE | PROT_READ | PROT_EXEC, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-	mprotect((void*)(mmap_start & 0xFFFFF000), PAGE_SIZE, PROT_READ | PROT_EXEC | PROT_WRITE);
-	mmap_end = (mmap_start + PAGE_SIZE);
+    size_t total = PAGE_SIZE * PAGE_COUNT;
+    mmap_start = (uintptr_t)mmap(0, total, PROT_WRITE | PROT_READ | PROT_EXEC, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    if (mmap_start == (uintptr_t)MAP_FAILED) {
+        LOGE("mmap failed");
+        return;
+    }
+    mmap_end = mmap_start + total;
 }
 
-void JMPCode(uintptr_t func, uintptr_t addr)
+static inline void WriteAbsJumpThumbAtomic(uintptr_t at, uintptr_t target)
 {
-    uint32_t code = (((addr - func - 4) >> 12) & 0x7FF) | 0xF000 | ((((addr - func - 4) >> 1) & 0x7FF) | 0xB800) << 16;
-    WriteMemory(func, (uintptr_t)&code, 4);
+    uint16_t insn_half[2] = { 0xF8DF, 0xF000 };
+    uint32_t tgt = (uint32_t)(target | 1);
+
+    WriteMemory(at + 4, (uintptr_t)&tgt, 4);
+    WriteMemory(at, (uintptr_t)insn_half, 4);
 }
 
-void WriteHookProc(uintptr_t addr, uintptr_t func)
+static uintptr_t MakeTrampoline(uintptr_t addr, size_t *out_copied)
 {
-    char code[16];
-    memcpy(code, HOOK_PROC, 16);
-    *(uint32_t*)&code[12] = (func | 1);
-    WriteMemory(addr, (uintptr_t)code, 16);
+    const size_t min_copy = 8;
+    if (mmap_start + min_copy + 8 > mmap_end) {
+        LOGE("Not enough trampoline memory");
+        return 0;
+    }
+
+    uintptr_t tramp = mmap_start;
+
+    ReadMemory(tramp, addr, min_copy);
+
+    uintptr_t return_addr = addr + min_copy;
+    WriteAbsJumpThumbAtomic(tramp + min_copy, return_addr);
+
+    *out_copied = min_copy;
+    mmap_start += (min_copy + 8 + 0xF) & ~0xF; 
+    return tramp;
 }
 
 void SetUpHook(uintptr_t addr, uintptr_t func, uintptr_t *orig)
 {
-    if(memlib_end < (memlib_start + 0x10) || mmap_end < (mmap_start + 0x20))
-    {
-        LOGE("space limit reached");
+    const size_t need_for_stub = 8 + 8;
+    if (mmap_start + need_for_stub > mmap_end) {
+        LOGE("space limit reached for mmap stubs");
         std::terminate();
     }
 
-    ReadMemory(mmap_start, addr, 4);
-    WriteHookProc(mmap_start+4, addr+4);
-    *orig = mmap_start+1;
-    mmap_start += 32;
+    size_t copied = 0;
+    uintptr_t tramp = MakeTrampoline(addr, &copied);
+    if (!tramp) {
+        LOGE("Failed to make trampoline");
+        std::terminate();
+    }
 
-    JMPCode(addr, memlib_start);
-    WriteHookProc(memlib_start, func);
-    memlib_start += 16;
+    *orig = tramp | 1;
+    WriteAbsJumpThumbAtomic(addr, func);
 }
 
 void InstallMethodHook(uintptr_t addr, uintptr_t func)

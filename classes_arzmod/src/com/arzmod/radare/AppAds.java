@@ -5,81 +5,126 @@ import com.unity3d.ads.IUnityAdsShowListener;
 import com.unity3d.ads.IUnityAdsInitializationListener;
 import com.unity3d.ads.UnityAds;
 import com.unity3d.ads.metadata.MetaData;
+import com.unity3d.services.banners.BannerView;
+import com.unity3d.services.banners.UnityBannerSize;
+import com.unity3d.services.banners.BannerErrorInfo;
 import android.util.Log;
 import android.content.Context;
 import com.arzmod.radare.AppContext;
 import android.app.Activity;
+import android.view.ViewGroup;
+import android.widget.FrameLayout;
+import android.view.Gravity;
+import android.view.View;
 
 
 public class AppAds {
-    private static String gameId = "";
-    private static String bannerPlacementId = "";
-    private static boolean testMode = false;
+    private static boolean initialized = false;
+    private static BannerView banner;
 
     public static void initializeAndShow() {
-        Context context = AppContext.getContext();
-        if (context == null) {
-            Log.e("arzmod-unityads-module", "Context is null");
-            return;
-        }
+        AppContext.getMainEntrenchActivity(new AppContext.MainEntrenchActivityCallback() {
+            @Override
+            public void onResult(Activity activity) {
+                if(initialized) showBanner(activity);
+                else
+                {
+                    Log.d("arzmod-unityads-module", "Activity: " + activity.getClass().getName());
+                    try {
+                        UnityAds.initialize(activity, "5917151", false, new IUnityAdsInitializationListener() {
+                            @Override
+                            public void onInitializationComplete() {
+                                Log.d("arzmod-unityads-module", "Unity Ads initialized successfully");
+                                showBanner(activity);
+                                initialized = true;
+                            }
 
-        Activity activity = (Activity)context;
-        Log.d("arzmod-unityads-module", "Activity: " + activity.getClass().getName());
-
-        // UnityAds.initialize(activity, gameId, testMode);
-        try {
-            UnityAds.initialize(activity, gameId, testMode, new IUnityAdsInitializationListener() {
-                public void onInitializationComplete() {
-                    Log.d("UnityAds", "Unity Ads initialized successfully");
-                    new android.os.Handler().postDelayed(new Runnable() {
-                        @Override
-                        public void run() {
-                            showBanner(activity);
-                        }
-                    }, 3000);
-                    
+                            @Override
+                            public void onInitializationFailed(UnityAds.UnityAdsInitializationError error, String message) {
+                                Log.e("arzmod-unityads-module", "Unity Ads initialization failed: " + message);
+                            }
+                        });
+                    } catch (Exception e) {
+                        Log.e("arzmod-unityads-module", "Error initializing Unity Ads: " + e.getMessage());
+                    }
                 }
-
-                public void onInitializationFailed(UnityAds.UnityAdsInitializationError error, String message) {
-                    Log.e("UnityAds", "Unity Ads initialization failed: " + message);
-                }
-            });
-        } catch (Exception e) {
-            Log.e("UnityAds", "Error initializing Unity Ads: " + e.getMessage());
-        }
+            }
+        });
+       
     }
 
     public static void showBanner(Activity activity) {
-        UnityAds.load(bannerPlacementId, new IUnityAdsLoadListener() {
+        activity.runOnUiThread(new Runnable() {
             @Override
-            public void onUnityAdsAdLoaded(String placementId) {
-                UnityAds.show(activity, placementId, new IUnityAdsShowListener() {
-                    @Override
-                    public void onUnityAdsShowFailure(String placementId, UnityAds.UnityAdsShowError error, String message) {
-                        Log.e("UnityAds", "Banner show failed: " + message);
-                    }
+            public void run() {
+                if (banner == null) {
+                    banner = new BannerView(activity, "Banner_Android", new UnityBannerSize(320, 50));
+                    banner.setListener(new BannerView.IListener() {
+                        @Override
+                        public void onBannerLoaded(BannerView b) {
+                            Log.d("arzmod-unityads-module", "Banner loaded");
+                            try {
+                                FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(
+                                        FrameLayout.LayoutParams.WRAP_CONTENT,
+                                        FrameLayout.LayoutParams.WRAP_CONTENT
+                                );
+                                lp.gravity = Gravity.TOP | Gravity.CENTER_HORIZONTAL;
+                                activity.addContentView(b, lp);
+                            } catch (Exception e) {
+                                Log.e("arzmod-unityads-module", "Attach banner failed: " + e.getMessage());
+                            }
+                        }
 
-                    @Override
-                    public void onUnityAdsShowStart(String placementId) {
-                        Log.d("UnityAds", "Banner show started");
-                    }
+                        @Override
+                        public void onBannerFailedToLoad(BannerView b, BannerErrorInfo errorInfo) {
+                            Log.e("arzmod-unityads-module", "Banner load failed: " + errorInfo.errorMessage);
+                        }
 
-                    @Override
-                    public void onUnityAdsShowClick(String placementId) {
-                        Log.d("UnityAds", "Banner clicked");
-                    }
+                        @Override
+                        public void onBannerClick(BannerView b) {
+                            Log.d("arzmod-unityads-module", "Banner clicked");
+                        }
 
-                    @Override
-                    public void onUnityAdsShowComplete(String placementId, UnityAds.UnityAdsShowCompletionState state) {
-                        Log.d("UnityAds", "Banner show completed");
+                        @Override
+                        public void onBannerLeftApplication(BannerView b) {
+                            Log.d("arzmod-unityads-module", "Banner left application");
+                        }
+                    });
+                } else {
+                    if (banner.getParent() == null) {
+                        try {
+                            FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(
+                                    FrameLayout.LayoutParams.WRAP_CONTENT,
+                                    FrameLayout.LayoutParams.WRAP_CONTENT
+                            );
+                            lp.gravity = Gravity.TOP | Gravity.CENTER_HORIZONTAL;
+                            activity.addContentView(banner, lp);
+                        } catch (Exception e) {
+                            Log.e("arzmod-unityads-module", "Reattach banner failed: " + e.getMessage());
+                        }
                     }
-                });
-            }
+                    banner.setVisibility(View.VISIBLE);
+                }
 
-            @Override
-            public void onUnityAdsFailedToLoad(String placementId, UnityAds.UnityAdsLoadError error, String message) {
-                Log.e("UnityAds", "Banner load failed: " + message);
+                try {
+                    banner.load();
+                } catch (Exception e) {
+                    Log.e("arzmod-unityads-module", "Banner load() error: " + e.getMessage());
+                }
             }
         });
+    }
+
+    public static void hideBanner() {
+        if (banner != null) {
+            try {
+                banner.setVisibility(View.GONE);
+                ViewGroup parent = (ViewGroup) banner.getParent();
+                if (parent != null) parent.removeView(banner);
+                banner = null;
+            } catch (Exception e) {
+                Log.e("arzmod-unityads-module", "Hide banner failed: " + e.getMessage());
+            }
+        }
     }
 }

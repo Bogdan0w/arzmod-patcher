@@ -125,7 +125,14 @@ def get_github_repo():
     if not m:
         raise Exception("Не удалось распознать ссылку на репозиторий")
     owner, repo = m.group(1), m.group(2)
-    return owner, repo
+
+    result = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        capture_output=True, text=True
+    )
+    git_hash = result.stdout.strip()
+
+    return owner, repo, git_hash
 
 
 def replace_files(base_path, name):
@@ -157,11 +164,15 @@ def replace_files(base_path, name):
 		print(f"Не было найдено файлов для замены {name}.")
 
 def add_patched_lib(libname, arch):
+	common_patched_lib = f"{working_dir}/libpatch/{arch}/{libname}"
 	patched_lib = f"{working_dir}/libpatch/{arch}/{'ARIZONA' if project == ARIZONA_MOBILE else 'RODINA'}/{libname}"
 	libpath = f"{app_dir}/lib/{arch}/{libname}"
 	if os.path.exists(patched_lib):
 		shutil.copy(patched_lib, libpath)
 		print(f"Библиотека {libname} для {arch} для проекта {'ARIZONA' if project == ARIZONA_MOBILE else 'RODINA'} успешно копирована!")
+	if os.path.exists(common_patched_lib):
+		shutil.copy(common_patched_lib, libpath)
+		print(f"Библиотека {libname} для {arch} успешно копирована!")
 	elif os.path.exists(libpath):
 		print(f"Библиотеки {libname} для копирования не найдено в libpatch. Используется исходная версия")
 	else:
@@ -1052,7 +1063,7 @@ def run_command(command, cwd=None, check=True):
 		exitWithError(f"Error: {e}")
 
 def arzmod_patch():
-	repo_owner, repo_name = get_github_repo()
+	repo_owner, repo_name, repo_hash = get_github_repo()
 	miami_path = app_dir + f"/{arz_miami_path}"
 	src_path = app_dir + f"/{arz_src_path}"
 	ui_path = app_dir + f"/{arz_ui_path}"
@@ -1077,6 +1088,10 @@ def arzmod_patch():
 
 	append_to_file(src_path + "/com/arizona/game/BuildConfig.smali", f".field public static final GIT_OWNER:Ljava/lang/String; = \"{repo_owner}\"")
 	append_to_file(src_path + "/com/arizona/game/BuildConfig.smali", f".field public static final GIT_REPO:Ljava/lang/String; = \"{repo_name}\"")
+	append_to_file(src_path + "/com/arizona/game/BuildConfig.smali", f".field public static final GIT_HASH:Ljava/lang/String; = \"{repo_hash}\"")
+	append_to_file(src_path + "/com/arizona/game/BuildConfig.smali", f".field public static final ARZMOD_DEBUG:Z = {'true' if arzmod_dev and not '-release' in sys.argv else 'false'}")
+	append_to_file(src_path + "/com/arizona/game/BuildConfig.smali", f".field public static final BUILD_TIME:J = {int(time.time() * 1000)}L")
+
 
 	
 	if arzmodbuild:		
@@ -1457,14 +1472,11 @@ def arzmod_patch():
 		invoke-static {p0}, Lcom/arzmod/radare/GamePatches;->updateHudShield(Lru/mrlargha/commonui/elements/hud/presentation/Hud;)V
 	""")
 
+
+
 	# SAVECONTEXT FOR COMPATIBLE + classes_arzmod/src/com/arzmod/radare/AppContext.java
 	insert_smali_code_after_line(src_path + "/com/arizona/launcher/MainEntrench.smali", ".method protected onCreate", "invoke-super {p0, p1}, Lcom/arizona/launcher/Hilt_MainEntrench;->onCreate(Landroid/os/Bundle;)V", """
 		invoke-static {}, Lcom/arzmod/radare/ApplicationStart;->launcherStart()V
-	""")
-	insert_smali_code_after_line(src_path + "/com/arizona/game/GTASA.smali", ".method public onCreate", ".locals", """
-		invoke-virtual {p0}, Lcom/arizona/launcher/MainActivity;->getApplicationContext()Landroid/content/Context;
-		move-result-object v0
-		invoke-static {v0}, Lcom/arzmod/radare/AppContext;->setContext(Landroid/content/Context;)V
 	""")
 	insert_smali_code_after_line(src_path + "/com/arizona/launcher/ArizonaApplication.smali", ".method public onCreate", ".locals", """
 		invoke-virtual {p0}, Lcom/arizona/launcher/ArizonaApplication;->getApplicationContext()Landroid/content/Context;
@@ -1473,13 +1485,11 @@ def arzmod_patch():
 		invoke-direct {v0, v1}, Lcom/arzmod/radare/ApplicationStart;-><init>(Landroid/content/Context;)V
 		invoke-virtual {v0}, Lcom/arzmod/radare/ApplicationStart;->start()V
 	""")
-	insert_smali_code_after_line(src_path + "/com/arizona/launcher/MainActivity.smali", ".method protected onCreate", ".locals", """
-		invoke-virtual {p0}, Lcom/arizona/launcher/MainActivity;->getApplicationContext()Landroid/content/Context;
-		move-result-object v0
-		invoke-static {v0}, Lcom/arzmod/radare/AppContext;->setContext(Landroid/content/Context;)V
-	""")
 	insert_smali_code_after_line(src_path + "/com/arizona/launcher/MainEntrench.smali", ".method protected onCreate", "invoke-super {p0, p1}, Lcom/arizona/launcher/Hilt_MainEntrench;->onCreate(Landroid/os/Bundle;)V", """
-		invoke-static {p0}, Lcom/arzmod/radare/AppContext;->setContext(Landroid/content/Context;)V
+		invoke-static {p0}, Lcom/arzmod/radare/AppContext;->setMainEntrenchActivity(Landroid/app/Activity;)V
+	""")
+	insert_smali_code_after_line(src_path + "/com/arizona/game/GTASA.smali", ".method public onCreate", ".locals", """
+		invoke-static {p0}, Lcom/arzmod/radare/AppContext;->setGTASAActivity(Landroid/app/Activity;)V
 	""")
 
 	# REPLACE PHOTO
@@ -1606,7 +1616,7 @@ def install_game_libraries():
 			else:
 				if not find_pattern(lib_data, pattern_value_clean):
 					if usearm64 and not arzmod_dev: print(f"Паттерн {name} ({pattern_value_clean}) не найден в {libsamppath}")
-					else: exitWithError(f"Паттерн {name} ({pattern_value_clean}) не найден в {libsamppath}")
+					else: input(f"Паттерн {name} ({pattern_value_clean}) не найден в {libsamppath}")
 
 	if usearm64:
 		add_asset(f"{working_dir}/resource/profile.json")

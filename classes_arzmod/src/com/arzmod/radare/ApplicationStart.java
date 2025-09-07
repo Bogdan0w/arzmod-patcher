@@ -83,7 +83,6 @@ public class ApplicationStart {
 
     public void start() {
         Log.d("arzmod-app-module", "-> Application started.");
-        AppContext.setContext(context);
         FirebaseAdd.initializeAndSubscribe(context);
     }
 
@@ -170,22 +169,20 @@ public class ApplicationStart {
         }
 
         Toast.makeText(context, Build.CPU_ABI + " " + BuildConfig.VERSION_NAME + " " + (BuildConfig.GIT_BUILD  ? "arzmod_community" : "arzmod"), Toast.LENGTH_SHORT).show();
-        //AppAds.initializeAndShow();
+        if(!SettingsPatch.getSettingsKeyValue(SettingsPatch.IS_DEV_HUNGRY)) AppAds.initializeAndShow();
     }
 
     public static void showBanner() {
         Context context = AppContext.getContext();
         if (context == null) {
-            Log.e("arzmod-app-module", "Context is null");
+            Log.e("arzmod-app-module", "context is null");
             return;
         }
-
-        if (!(context instanceof Activity)) {
-            Log.e("arzmod-app-module", "Context is not an Activity");
+        final Activity activity = AppContext.getActivity();
+        if (activity == null) {
+            Log.e("arzmod-app-module", "activity is null");
             return;
         }
-
-        final Activity activity = (Activity) context;
         new Thread(new Runnable() {
             @Override
             public void run() {
