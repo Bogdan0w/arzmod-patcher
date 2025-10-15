@@ -48,6 +48,20 @@ jobs:
           VERSION_INFO=$(curl -s http://mob.maz-ins.com/game/release/app_version.json)
           LAUNCHER_VERSION=$(echo $VERSION_INFO | jq -r '.launcherVersion')
           LAUNCHER_VERSION_NAME=$(echo $VERSION_INFO | jq -r '.launcherVersionName')
+
+          if git tag -l | grep -qx "$LAUNCHER_VERSION"; then
+            ORIGINAL_LAUNCHER_VERSION="$LAUNCHER_VERSION"
+            INCREMENTED_LAUNCHER_VERSION=$((LAUNCHER_VERSION + 1))
+            LAUNCHER_VERSION="$INCREMENTED_LAUNCHER_VERSION"
+            echo "increased=true" >> $GITHUB_OUTPUT
+            echo "original_launcher_version=$ORIGINAL_LAUNCHER_VERSION" >> $GITHUB_OUTPUT
+            echo "version_delta=$((LAUNCHER_VERSION - ORIGINAL_LAUNCHER_VERSION))" >> $GITHUB_OUTPUT
+          else
+            echo "increased=false" >> $GITHUB_OUTPUT
+            echo "original_launcher_version=" >> $GITHUB_OUTPUT
+            echo "version_delta=0" >> $GITHUB_OUTPUT
+          fi
+
           echo "launcher_version=$LAUNCHER_VERSION" >> $GITHUB_OUTPUT
           echo "launcher_version_name=$LAUNCHER_VERSION_NAME" >> $GITHUB_OUTPUT
 
@@ -70,6 +84,16 @@ jobs:
             echo "changelog<<EOF" >> $GITHUB_OUTPUT
             echo "${{ steps.get_commits.outputs.commits }}" >> $GITHUB_OUTPUT
             echo "EOF" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Prepare build note
+        id: build_note
+        run: |
+          if [ "${{ steps.get_version.outputs.increased }}" = "true" ]; then
+            DIFF="${{ steps.get_version.outputs.version_delta }}"
+            echo "note=(данный патч лаунчера создан на прошлой версии, и опережает актуальную на $DIFF)" >> $GITHUB_OUTPUT
+          else
+            echo "note=" >> $GITHUB_OUTPUT
           fi
 
       - name: Create Git Tag
@@ -133,7 +157,7 @@ jobs:
       - name: Build Arizona x32
         run: |
           mkdir -p dist
-          python main.py -actual
+          python main.py -actual -setgitver ${{ steps.get_version.outputs.launcher_version }}
           mv ./app-debug/dist/app-debug.apk ./dist/app-arizona-x32-patched.apk
 
       - name: Upload Arizona x32
@@ -144,7 +168,7 @@ jobs:
 
       - name: Build Arizona x64
         run: |
-          python main.py -actual -x64
+          python main.py -actual -x64 -setgitver ${{ steps.get_version.outputs.launcher_version }}
           mv ./app-debug/dist/app-debug.apk ./dist/app-arizona-x64-patched.apk
 
       - name: Upload Arizona x64
@@ -155,7 +179,7 @@ jobs:
 
       - name: Build Rodina x32
         run: |
-          python main.py -actual -rodina
+          python main.py -actual -rodina -setgitver ${{ steps.get_version.outputs.launcher_version }}
           mv ./app-debug/dist/app-debug.apk ./dist/app-rodina-x32-patched.apk
 
       - name: Upload Rodina x32
@@ -166,7 +190,7 @@ jobs:
 
       - name: Build Rodina x64
         run: |
-          python main.py -actual -rodina -x64
+          python main.py -actual -rodina -x64 -setgitver ${{ steps.get_version.outputs.launcher_version }}
           mv ./app-debug/dist/app-debug.apk ./dist/app-rodina-x64-patched.apk
 
       - name: Upload Rodina x64
@@ -184,6 +208,7 @@ jobs:
           body: |
             Версия лаунчера: ${{ steps.get_version.outputs.launcher_version_name }}
             Номер сборки: ${{ steps.get_version.outputs.launcher_version }}
+            ${{ steps.build_note.outputs.note }}
 
             Изменения с последнего релиза:
             ${{ steps.changelog.outputs.changelog }}

@@ -23,25 +23,6 @@ import com.squareup.picasso.Picasso;
 import com.miami.game.feature.download.dialog.ui.connection.ConnectionHolder;
 
 public class GamePatches {
-    public static native void nativeOnTouch(int type, int id, double x, double y);
-
-
-    public static void installTouchForwarder(final Activity activity) {
-        final View root = activity.getWindow().getDecorView();
-        root.setOnTouchListener(new View.OnTouchListener() {
-            @Override public boolean onTouch(View v, MotionEvent e) {
-                final int idx = e.getActionIndex();
-                GamePatches.nativeOnTouch(
-                    e.getActionMasked(),
-                    e.getPointerId(idx),
-                    e.getX(idx),
-                    e.getY(idx)
-                );
-                return false;
-            }
-        });
-    }
-
     public static boolean isHudVisible(Hud hud, boolean isDefaultHud) {
         if(Objects.equals(Build.CPU_ABI, "arm64-v8a") && SettingsPatch.getSettingsKeyInt(SettingsPatch.HUD_TYPE) != 3 && !SettingsPatch.getSettingsKeyValue(SettingsPatch.IS_UNITY_ELEMENTS)) return false;
         if(SettingsPatch.getSettingsKeyValue(SettingsPatch.IS_UNITY_ELEMENTS) && SettingsPatch.getSettingsKeyInt(SettingsPatch.HUD_TYPE) != 3) {

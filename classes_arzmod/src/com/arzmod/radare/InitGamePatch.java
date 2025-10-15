@@ -422,15 +422,6 @@ public class InitGamePatch {
             }
             if(SettingsPatch.getSettingsKeyValue(SettingsPatch.IS_VERSION_HIDED)) InitGamePatch.setVersionString("");
         }
-        else
-        {
-            AppContext.getGTASAActivity(new AppContext.GTASAActivityCallback() {
-                @Override
-                public void onResult(Activity activity) {
-                    GamePatches.installTouchForwarder(activity);
-                }
-            });            
-        }
         if(isCustomServer())
         {
             Log.d("arzmod-initgame-module", "Enabling custom server fix...");
