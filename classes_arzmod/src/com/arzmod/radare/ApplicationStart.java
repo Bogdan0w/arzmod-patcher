@@ -561,9 +561,16 @@ public class ApplicationStart {
                             new Handler(Looper.getMainLooper()).post(new Runnable() {
                                 @Override
                                 public void run() {
-                                    if (!(context instanceof Activity)) return;
-                                    Activity activity = (Activity) context;
-                                    if (activity.isFinishing() || activity.isDestroyed()) return;
+                                    Activity activity = AppContext.getActivity();
+                                    if (activity == null) {
+                                        Log.e("arzmod-app-module", "Activity is null (gitCheckUpdate)");
+                                        return;
+                                    }
+                                    if (activity.isFinishing() || activity.isDestroyed()) 
+                                    {
+                                        Log.e("arzmod-app-module", "Activity is finishing or destroyed (gitCheckUpdate)");
+                                        return;
+                                    }
 
                                     AlertDialog.Builder builder = new AlertDialog.Builder(activity);
                                     builder.setTitle("Доступно обновление");
@@ -582,7 +589,7 @@ public class ApplicationStart {
                                         public void onClick(DialogInterface dialog, int which) {
                                             Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(releaseUrl));
                                             intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                                            context.startActivity(intent);
+                                            activity.startActivity(intent);
                                         }
                                     });
 
