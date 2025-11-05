@@ -15,6 +15,7 @@
 #include <fstream>
 #include "addresses.h"
 #include "logging.h"
+#include <cxxabi.h>
 
 std::string GetFunctionPattern(void* func_addr, size_t size) {
     if (!func_addr || size == 0) {
@@ -220,7 +221,32 @@ void logLibraryForAddress(const char* tag, void* address) {
     uintptr_t base = 0;
     if (getLibraryFromAddress(address, path, &base)) {
         uintptr_t off = reinterpret_cast<uintptr_t>(address) - base;
-        LOGI("%s: %p -> %s (base=%p, off=0x%zx)", tag, address, path.c_str(), (void*)base, (size_t)off);
+        Dl_info info{};
+        const char* rawName = nullptr;
+        const char* prettyName = nullptr;
+        char* demangled = nullptr;
+        int status = 0;
+        size_t demangledSize = 0;
+
+        if (dladdr(address, &info) != 0 && info.dli_sname != nullptr) {
+            rawName = info.dli_sname;
+            demangled = abi::__cxa_demangle(rawName, nullptr, &demangledSize, &status);
+            if (status == 0 && demangled != nullptr) {
+                prettyName = demangled;
+            } else {
+                prettyName = rawName;
+            }
+
+            uintptr_t symBase = reinterpret_cast<uintptr_t>(info.dli_saddr);
+            uintptr_t symOff = reinterpret_cast<uintptr_t>(address) - symBase;
+            LOGI("%s: %p -> %s (base=%p, off=0x%zx), sym=%s + 0x%zx", tag, address, path.c_str(), (void*)base, (size_t)off, prettyName, (size_t)symOff);
+        } else {
+            LOGI("%s: %p -> %s (base=%p, off=0x%zx)", tag, address, path.c_str(), (void*)base, (size_t)off);
+        }
+
+        if (demangled) {
+            free(demangled);
+        }
     } else {
         LOGI("%s: %p -> <unknown>", tag, address);
     }

@@ -369,18 +369,18 @@ public class InitGamePatch {
                     @Override
                     public void onResult(Activity activity) {
                         Main.moduleDialog("last repatch at: " + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(new Date(BuildConfig.BUILD_TIME)));
-                        int gameMonitorTimer = Timers.startTimer(1000, new Timers.TimerCallback() {
-                            @Override
-                            public void onTimerTick(int timerId, int tickCount, long currentTime) {
-                                DebugOverlay.show(activity, "ARZMOD-DEBUG"
-                                + " | version: " + BuildConfig.VERSION_NAME 
-                                + " | code: " + BuildConfig.VERSION_CODE 
-                                + " | commit: " + BuildConfig.GIT_HASH.substring(0, 7) 
-                                + " | core rebuild: " + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(new Date(BuildConfig.BUILD_TIME)) 
-                                + " | arch: " + Build.CPU_ABI 
-                                + " | time: " + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(new Date(currentTime)));
-                            }
-                        });
+                        //int gameMonitorTimer = Timers.startTimer(1000, new Timers.TimerCallback() {
+                        //    @Override
+                        //    public void onTimerTick(int timerId, int tickCount, long currentTime) {
+                        //        DebugOverlay.show(activity, "ARZMOD-DEBUG"
+                        //        + " | version: " + BuildConfig.VERSION_NAME 
+                        //        + " | code: " + BuildConfig.VERSION_CODE 
+                        //        + " | commit: " + BuildConfig.GIT_HASH.substring(0, 7) 
+                        //        + " | core rebuild: " + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(new Date(BuildConfig.BUILD_TIME)) 
+                        //       + " | arch: " + Build.CPU_ABI 
+                        //        + " | time: " + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(new Date(currentTime)));
+                        //    }
+                        //});
                     }
                 });
             }
@@ -682,17 +682,26 @@ public class InitGamePatch {
             bindingField.setAccessible(true);
             Object binding = bindingField.get(registrationVideoBackground);
             
-            Field videoBgField = binding.getClass().getDeclaredField("videoBg");
-            videoBgField.setAccessible(true);
-            Object videoBg = videoBgField.get(binding);
-            videoBg.getClass().getMethod("stopPlayback").invoke(videoBg);
+            Field playerViewField = binding.getClass().getDeclaredField("playerView");
+            playerViewField.setAccessible(true);
+            Object playerView = playerViewField.get(binding);
+            
+            Method getPlayerMethod = playerView.getClass().getMethod("getPlayer");
+            Object player = getPlayerMethod.invoke(playerView);
+            if (player != null) {
+                player.getClass().getMethod("stop").invoke(player);
+                player.getClass().getMethod("release").invoke(player);
+            }
             
             Field videoField = binding.getClass().getDeclaredField("video");
             videoField.setAccessible(true);
             Object video = videoField.get(binding);
-            video.getClass().getMethod("setVisibility", int.class).invoke(video, 8);
             
-            videoBg.getClass().getMethod("setVisibility", int.class).invoke(videoBg, 8);
+            if (video instanceof View) {
+                ((View) video).setVisibility(View.GONE);
+            } else {
+                video.getClass().getMethod("setVisibility", int.class).invoke(video, 8);
+            }
         } catch (Exception e) {
             Log.e("arzmod-init-game", "Failed to stop video: " + e.getMessage());
         }

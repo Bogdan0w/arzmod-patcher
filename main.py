@@ -1069,6 +1069,9 @@ def arzmod_patch():
 	ui_path = app_dir + f"/{arz_ui_path}"
 	manifest_path = app_dir + '/AndroidManifest.xml'
 
+	if project == RODINA_MOBILE: #costyl-1667
+		move_and_cleanup(app_dir + f"/smali/ru/mrlargha", ui_path + "/ru/mrlargha")
+
 	move_and_cleanup(app_dir + "/smali_classes6", ui_path)
 	move_and_cleanup(src_path + "/ru/mrlargha", ui_path + "/ru/mrlargha")
 	
@@ -1492,6 +1495,10 @@ def arzmod_patch():
 		invoke-static {p0}, Lcom/arzmod/radare/AppContext;->setGTASAActivity(Landroid/app/Activity;)V
 	""")
 
+	# wtf idontknow about this error added after 1667 (maybe because i using old apktool) #costyl-1667
+	# error: '...dip' is incompatible with attribute from.... (attr) float|fraction.
+	apply_function_to_files(search_and_replace, app_dir + '/res/anim', 'dip', '', True)
+
 	# REPLACE PHOTO
 	replace_files(working_dir + "/resource/mod_settings_btn", "privacy_policy")
 	replace_files(working_dir + "/resource/input_name", "input_password")
@@ -1537,7 +1544,6 @@ def arzmod_patch():
 
 	print(f"Set update version from {launcher_ver} to {launcher_verlua}")
 	search_and_replace(src_path + "/com/arizona/launcher/UpdateService.smali", str(hex(int(launcher_ver))), str(hex(int(launcher_verlua))))
-	# search_and_replace(src_path + "/com/arizona/launcher/UpdateService.smali", "app_version.json", "app_version_test.json")
 	
 	for folder in os.listdir(app_dir):
 		folder_path = os.path.join(app_dir, folder)
@@ -1624,6 +1630,7 @@ def install_game_libraries():
 		add_asset(f"{working_dir}/resource/profile.json")
 		add_patched_lib("libluajit-5.1.so", "arm64-v8a")
 		add_patched_lib("libmonetloader.so", "arm64-v8a")
+		build_native_lib("native_decompiler", "arm64-v8a")
 		build_native_lib("native", "arm64-v8a")
 	else:
 		if os.path.exists(app_dir + "/lib/arm64-v8a"):
@@ -1631,6 +1638,7 @@ def install_game_libraries():
 		add_patched_lib("libluajit-5.1.so", "armeabi-v7a")
 		add_patched_lib("libmonetloader.so", "armeabi-v7a")
 		add_patched_lib("libAML.so", "armeabi-v7a")
+		build_native_lib("native_decompiler", "armeabi-v7a")
 		build_native_lib("native", "armeabi-v7a")
 	
 		# ADD GAME VERSION
@@ -1803,6 +1811,7 @@ if __name__ == "__main__":
 		if not os.path.exists(app_dir):
 				exitWithError("The project path doesn't exists, you can't running tests")
 		testmode = True
+		build_native_lib("native_decompiler", arch)
 		build_native_lib("native", arch)
 
 	if not testmode:

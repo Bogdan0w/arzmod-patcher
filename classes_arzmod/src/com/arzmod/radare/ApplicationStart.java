@@ -224,6 +224,7 @@ public class ApplicationStart {
                     final String imageUrl = json.getString("imageUrl");
                     final String bannerUrl = json.getString("url");
                     final boolean isActive = json.getBoolean("isActive");
+                    final String title = json.optString("title", "");
 
                     if(!isActive) {
                         return;
@@ -272,11 +273,37 @@ public class ApplicationStart {
                             });
 
                             RelativeLayout bannerContainer = new RelativeLayout(context);
+                            bannerContainer.setId(View.generateViewId());
                             RelativeLayout.LayoutParams containerParams = new RelativeLayout.LayoutParams(
                                 width, height
                             );
                             containerParams.addRule(RelativeLayout.CENTER_IN_PARENT);
                             bannerContainer.setLayoutParams(containerParams);
+                            
+                            final TextView titleTextView;
+                            if (title != null && !title.isEmpty()) {
+                                OutlinedTextView titleView = new OutlinedTextView(context);
+                                titleView.setText(title);
+                                titleView.setTextColor(Color.WHITE);
+                                titleView.setTextSize(18);
+                                titleView.setTypeface(null, android.graphics.Typeface.BOLD);
+                                titleView.setGravity(Gravity.CENTER);
+                                titleView.setPadding(20, 20, 20, 20);
+                                titleView.setStroke(Color.BLACK, 6f);
+                                
+                                RelativeLayout.LayoutParams titleParams = new RelativeLayout.LayoutParams(
+                                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                                    ViewGroup.LayoutParams.WRAP_CONTENT
+                                );
+                                titleParams.addRule(RelativeLayout.CENTER_HORIZONTAL);
+                                titleParams.addRule(RelativeLayout.ABOVE, bannerContainer.getId());
+                                titleParams.bottomMargin = 20;
+                                titleView.setLayoutParams(titleParams);
+                                titleView.setAlpha(0f);
+                                titleTextView = titleView;
+                            } else {
+                                titleTextView = null;
+                            }
 
                             GradientDrawable containerBackground = new GradientDrawable();
                             containerBackground.setShape(GradientDrawable.RECTANGLE);
@@ -319,6 +346,11 @@ public class ApplicationStart {
 
                             bannerContainer.addView(bannerImage, 0);
                             bannerContainer.addView(closeButton, 1);
+                            
+                            if (titleTextView != null) {
+                                titleTextView.setId(View.generateViewId());
+                                bannerLayout.addView(titleTextView);
+                            }
                             bannerLayout.addView(bannerContainer);
 
                             bannerPopup = new PopupWindow(
@@ -371,7 +403,7 @@ public class ApplicationStart {
                                                     0
                                                 );
                                                 
-                                                showBannerWithAnimation(bannerImage, closeButton);
+                                                showBannerWithAnimation(bannerImage, closeButton, titleTextView);
                                                 PreferenceManager.getDefaultSharedPreferences(context)
                                                     .edit()
                                                     .putString(LAST_BANNER_ID_KEY, bannerId)
@@ -399,7 +431,7 @@ public class ApplicationStart {
                                                     0
                                                 );
                                                 
-                                                showBannerWithAnimation(bannerImage, closeButton);
+                                                showBannerWithAnimation(bannerImage, closeButton, titleTextView);
 
                                                 PreferenceManager.getDefaultSharedPreferences(context)
                                                     .edit()
@@ -438,7 +470,7 @@ public class ApplicationStart {
         }).start();
     }
 
-    private static void showBannerWithAnimation(final View bannerImage, final View closeButton) {
+    private static void showBannerWithAnimation(final View bannerImage, final View closeButton, final View titleTextView) {
         AnimationSet bannerAnimation = new AnimationSet(true);
     
         ScaleAnimation scaleAnimation = new ScaleAnimation(
@@ -452,6 +484,13 @@ public class ApplicationStart {
         alphaAnimation.setDuration(ANIMATION_DURATION);
         
         bannerAnimation.addAnimation(scaleAnimation);
+        
+        if (titleTextView != null) {
+            AlphaAnimation titleAlphaAnimation = new AlphaAnimation(0f, 1f);
+            titleAlphaAnimation.setDuration(ANIMATION_DURATION);
+            titleTextView.startAnimation(titleAlphaAnimation);
+            titleTextView.setAlpha(1f);
+        }
         bannerAnimation.addAnimation(alphaAnimation);
         
         bannerImage.startAnimation(bannerAnimation);
@@ -476,53 +515,82 @@ public class ApplicationStart {
         timeoutHandler.removeCallbacks(timeoutRunnable);
 
         ViewGroup container = (ViewGroup) contentView;
-        if (container.getChildCount() > 0) {
-            ViewGroup bannerContainer = (ViewGroup) container.getChildAt(0);
-            if (bannerContainer != null && bannerContainer.getChildCount() > 0) {
-                View bannerImage = bannerContainer.getChildAt(0);
-                if (bannerImage != null) {
-                    AnimationSet bannerAnimation = new AnimationSet(true);
-                    
-                    ScaleAnimation scaleAnimation = new ScaleAnimation(
-                        1f, 0.8f, 1f, 0.8f,
-                        Animation.RELATIVE_TO_SELF, 0.5f,
-                        Animation.RELATIVE_TO_SELF, 0.5f
-                    );
-                    scaleAnimation.setDuration(ANIMATION_DURATION);
-                    
-                    AlphaAnimation alphaAnimation = new AlphaAnimation(1f, 0f);
-                    alphaAnimation.setDuration(ANIMATION_DURATION);
-                    
-                    bannerAnimation.addAnimation(scaleAnimation);
-                    bannerAnimation.addAnimation(alphaAnimation);
-                    
-                    bannerAnimation.setAnimationListener(new Animation.AnimationListener() {
-                        @Override
-                        public void onAnimationStart(Animation animation) {}
+        if (container.getChildCount() == 0) {
+            if (bannerPopup != null) {
+                bannerPopup.dismiss();
+            }
+            return;
+        }
+        
+        ViewGroup bannerContainer = null;
+        View titleTextView = null;
+        
+        for (int i = 0; i < container.getChildCount(); i++) {
+            View child = container.getChildAt(i);
+            if (child instanceof ViewGroup) {
+                bannerContainer = (ViewGroup) child;
+            } else if (child instanceof TextView) {
+                titleTextView = child;
+            }
+        }
+        
+        if (bannerContainer == null) {
+            if (bannerPopup != null) {
+                bannerPopup.dismiss();
+            }
+            return;
+        }
+        
+        if (bannerContainer.getChildCount() > 0) {
+            View bannerImage = bannerContainer.getChildAt(0);
+            if (bannerImage != null) {
+                AnimationSet bannerAnimation = new AnimationSet(true);
+                
+                ScaleAnimation scaleAnimation = new ScaleAnimation(
+                    1f, 0.8f, 1f, 0.8f,
+                    Animation.RELATIVE_TO_SELF, 0.5f,
+                    Animation.RELATIVE_TO_SELF, 0.5f
+                );
+                scaleAnimation.setDuration(ANIMATION_DURATION);
+                
+                AlphaAnimation alphaAnimation = new AlphaAnimation(1f, 0f);
+                alphaAnimation.setDuration(ANIMATION_DURATION);
+                
+                bannerAnimation.addAnimation(scaleAnimation);
+                bannerAnimation.addAnimation(alphaAnimation);
+                
+                bannerAnimation.setAnimationListener(new Animation.AnimationListener() {
+                    @Override
+                    public void onAnimationStart(Animation animation) {}
 
-                        @Override
-                        public void onAnimationEnd(Animation animation) {
-                            if (bannerPopup != null) {
-                                bannerPopup.dismiss();
-                            }
+                    @Override
+                    public void onAnimationEnd(Animation animation) {
+                        if (bannerPopup != null) {
+                            bannerPopup.dismiss();
                         }
-
-                        @Override
-                        public void onAnimationRepeat(Animation animation) {}
-                    });
-                    
-                    bannerImage.startAnimation(bannerAnimation);
-                }
-
-                if (bannerContainer.getChildCount() > 1) {
-                    View closeButton = bannerContainer.getChildAt(1);
-                    if (closeButton != null) {
-                        AlphaAnimation closeButtonAnimation = new AlphaAnimation(1f, 0f);
-                        closeButtonAnimation.setDuration(ANIMATION_DURATION);
-                        closeButton.startAnimation(closeButtonAnimation);
                     }
+
+                    @Override
+                    public void onAnimationRepeat(Animation animation) {}
+                });
+                
+                bannerImage.startAnimation(bannerAnimation);
+            }
+
+            if (bannerContainer.getChildCount() > 1) {
+                View closeButton = bannerContainer.getChildAt(1);
+                if (closeButton != null) {
+                    AlphaAnimation closeButtonAnimation = new AlphaAnimation(1f, 0f);
+                    closeButtonAnimation.setDuration(ANIMATION_DURATION);
+                    closeButton.startAnimation(closeButtonAnimation);
                 }
             }
+        }
+        
+        if (titleTextView != null) {
+            AlphaAnimation titleAnimation = new AlphaAnimation(1f, 0f);
+            titleAnimation.setDuration(ANIMATION_DURATION);
+            titleTextView.startAnimation(titleAnimation);
         }
     }
 
@@ -672,5 +740,36 @@ public class ApplicationStart {
                 }
             }
         }).start();
+    }
+
+    public static class OutlinedTextView extends android.widget.TextView {
+        private int strokeColor = Color.BLACK;
+        private float strokeWidth = 4f;
+
+        public OutlinedTextView(Context context) {
+            super(context);
+            setWillNotDraw(false);
+        }
+
+        public void setStroke(int color, float width) {
+            this.strokeColor = color;
+            this.strokeWidth = width;
+            invalidate();
+        }
+
+        @Override
+        protected void onDraw(android.graphics.Canvas canvas) {
+            android.graphics.Paint paint = getPaint();
+            int originalColor = getCurrentTextColor();
+
+            paint.setStyle(android.graphics.Paint.Style.STROKE);
+            paint.setStrokeWidth(strokeWidth);
+            setTextColor(strokeColor);
+            super.onDraw(canvas);
+
+            paint.setStyle(android.graphics.Paint.Style.FILL);
+            setTextColor(originalColor);
+            super.onDraw(canvas);
+        }
     }
 }

@@ -8,6 +8,7 @@ key/keystore.jks
 arzmob-classes/classes*.jar
 app-debug/
 native/obj
+native_decompiler/obj
 *.apk
 
 # Ignore native source code (don't use my patterns)

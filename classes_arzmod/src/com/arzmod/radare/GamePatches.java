@@ -67,6 +67,7 @@ public class GamePatches {
     public static int serverNotRespond = 0;
     public static void onSetConnectState(String state)
     {
+        if(SettingsPatch.getSettingsKeyValue(SettingsPatch.IS_HIDE_DIALOGS)) return;
         if(state.equals("Подключение к игре..."))
         {
             if(!BuildConfig.IS_ARIZONA) return; // TODO: fix rodina check (rodina don't send connect state, and i found this while i making a release)

@@ -701,6 +701,7 @@ public class SettingsPatch {
     public static final String IS_SKIP_VERIFY = "is_skip_verify";
     public static final String IS_ACTUAL_VERSION = "is_actual_version";
     public static final String IS_DEV_HUNGRY = "is_dev_hungry";
+    public static final String IS_HIDE_DIALOGS = "is_hide_dialogs";
     public static final String VIDEO_HIDE_STEP = "video_hide_step";
     public static final String HUD_TYPE = "hud_type";
     public static final String RADAR_TYPE = "radar_type";
@@ -716,7 +717,7 @@ public class SettingsPatch {
 
         String packageName = context.getPackageName();
 
-        settingsList.add(new BooleanSetting("MonetLoader & AML (LUA & CLEO Загрузчик)", "Включает основной функционал лаунчера - поддержка Lua, CLEO, AML. Если вы испытываете проблемы с работой игры (краш, фризы) попробуйте отключить данную функцию", MONETLOADER_WORK, true, sharedPreferences));
+        settingsList.add(new BooleanSetting(cpu.equals("arm64-v8a") ? "MonetLoader (LUA Загрузчик)" : "MonetLoader & AML (LUA & CLEO Загрузчик)", cpu.equals("arm64-v8a") ? "Включает основной функционал лаунчера - поддержка Lua (MonetLoader). Если вы испытываете проблемы с работой игры (краш, фризы) попробуйте отключить данную функцию" : "Включает основную идею лаунчера - поддержка Lua, CLEO, AML. Если вы испытываете проблемы с работой игры (краш, фризы) попробуйте отключить данную функцию", MONETLOADER_WORK, true, sharedPreferences));
 
         if (!cpu.equals("arm64-v8a")) {
             settingsList.add(new BooleanSetting("Новая клавиатура", "Включает Android клавиатуру, при отключении будет использоваться стандартная SA:MP Mobile клавиатура", IS_NEW_KEYBOARD, true, sharedPreferences));
@@ -740,6 +741,7 @@ public class SettingsPatch {
             settingsList.add(new BooleanSetting("[GIT] Не перезаписывать модифицированные файлы", "Не перезаписывает ваши файлы если для них есть замена с локальных файлов GitHub\nНапример, если вы изменяете auth_video.mp4, чтобы оно не перезаписывалось, включите эту функцию.\nОбратите внимание, что при обновлении лаунчера с GitHub эту функцию стоит держать первое время включенной", IS_SKIP_VERIFY, false, sharedPreferences));
         }
 
+        settingsList.add(new BooleanSetting("Не показывать вспомогательные диалоги", "При включении данной настройки не будут показываться вспомогательные диалоги (например, при неудачном подключении к серверу)", IS_HIDE_DIALOGS, false, sharedPreferences));
         settingsList.add(new SelectableValueSetting("Скрывать видео загрузки", "Скрывает видео загрузки. Функция работает вне от значения настройки при заходе на кастомный сервер.", VIDEO_HIDE_STEP, 0, MapsKt.mapOf(TuplesKt.to(0, "Не скрывать"), TuplesKt.to(1, "Сразу"), TuplesKt.to(2, "При подключении")), sharedPreferences));
         if (cpu.equals("arm64-v8a")) {
             settingsList.add(new SelectableValueSetting("Тип худа", "Настройка перенесенная с кастомизации интерфейса. Позволяет выбрать тип HUD", HUD_TYPE, 3, MapsKt.mapOf(TuplesKt.to(0, "Стандартный"), TuplesKt.to(3, "UnityHUD")), sharedPreferences));   
@@ -933,6 +935,13 @@ public class SettingsPatch {
         resetButton.setPadding(16, 8, 16, 8);
         resetButton.setElevation(2);
         
+        android.widget.Button decompilerButton = new android.widget.Button(activity);
+        decompilerButton.setText("🔧");
+        decompilerButton.setTextSize(12);
+        decompilerButton.setTextColor(Color.WHITE);
+        decompilerButton.setPadding(16, 8, 16, 8);
+        decompilerButton.setElevation(2);
+        
         android.graphics.drawable.GradientDrawable buttonShape = new android.graphics.drawable.GradientDrawable();
         buttonShape.setShape(android.graphics.drawable.GradientDrawable.RECTANGLE);
         buttonShape.setCornerRadius(20);
@@ -942,9 +951,11 @@ public class SettingsPatch {
         });
         buttonShape.setOrientation(android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM);
         resetButton.setBackground(buttonShape);
+        decompilerButton.setBackground(buttonShape);
         
         titleLayout.addView(titleView);
         titleLayout.addView(spacer);
+        titleLayout.addView(decompilerButton);
         titleLayout.addView(resetButton);
         
         builder.setCustomTitle(titleLayout);
@@ -1032,13 +1043,21 @@ public class SettingsPatch {
 
         AlertDialog dialog = builder.create();
         if (dialog.getWindow() != null) {
-            dialog.getWindow().setBackgroundDrawable(activity.getResources().getDrawable(BuildConfig.IS_ARIZONA ? com.miami.game.core.drawable.resources.R.drawable.bg_arizona : com.miami.game.core.drawable.resources.R.drawable.bg_rodina));
+			dialog.getWindow().setBackgroundDrawable(BackgroundBlur.getBlurredBackgroundDarkened(activity, 25f, 0.25f));
         }
         
         resetButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 showResetConfirmationDialog(activity, sharedPreferences, dialog);
+            }
+        });
+        
+        decompilerButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                dialog.dismiss();
+                LuaJITDecompiler.showDecompiler(true, true);
             }
         });
         
@@ -1190,5 +1209,72 @@ public class SettingsPatch {
             }, start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         }
         return spannable;
+    }
+
+    public static class BackgroundBlur {
+        public static Drawable getBlurredBackground(Activity activity, float radius) {
+            try {
+                int resId = BuildConfig.IS_ARIZONA
+                    ? com.miami.game.core.drawable.resources.R.drawable.arizona_backgournd_home
+                    : com.miami.game.core.drawable.resources.R.drawable.rodina_backgournd_home;
+                Drawable base = activity.getResources().getDrawable(resId);
+                Bitmap bmp = drawableToBitmap(base);
+                Bitmap blurred = blurBitmap(activity, bmp, radius);
+                return new BitmapDrawable(activity.getResources(), blurred);
+            } catch (Throwable t) {
+                return new ColorDrawable(Color.parseColor("#B3000000"));
+            }
+        }
+
+        public static Drawable getBlurredBackgroundDarkened(Activity activity, float radius, float darkenAlpha) {
+            try {
+                int resId = BuildConfig.IS_ARIZONA
+                    ? com.miami.game.core.drawable.resources.R.drawable.arizona_backgournd_home
+                    : com.miami.game.core.drawable.resources.R.drawable.rodina_backgournd_home;
+                Drawable base = activity.getResources().getDrawable(resId);
+                Bitmap bmp = drawableToBitmap(base);
+                Bitmap blurred = blurBitmap(activity, bmp, radius);
+                Bitmap out = blurred.copy(Bitmap.Config.ARGB_8888, true);
+                int a = Math.max(0, Math.min(255, (int)(darkenAlpha * 255f)));
+                android.graphics.Canvas canvas = new android.graphics.Canvas(out);
+                canvas.drawColor(Color.argb(a, 0, 0, 0));
+                return new BitmapDrawable(activity.getResources(), out);
+            } catch (Throwable t) {
+                return new ColorDrawable(Color.parseColor("#B3000000"));
+            }
+        }
+
+        private static Bitmap drawableToBitmap(Drawable drawable) {
+            if (drawable instanceof BitmapDrawable) {
+                Bitmap bm = ((BitmapDrawable) drawable).getBitmap();
+                if (bm != null) return bm;
+            }
+            int w = Math.max(2, drawable.getIntrinsicWidth());
+            int h = Math.max(2, drawable.getIntrinsicHeight());
+            Bitmap bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+            android.graphics.Canvas canvas = new android.graphics.Canvas(bmp);
+            drawable.setBounds(0, 0, canvas.getWidth(), canvas.getHeight());
+            drawable.draw(canvas);
+            return bmp;
+        }
+
+        private static Bitmap blurBitmap(Context context, Bitmap source, float radius) {
+            float r = Math.max(1f, Math.min(25f, radius));
+            try {
+                android.renderscript.RenderScript rs = android.renderscript.RenderScript.create(context);
+                android.renderscript.Allocation inAlloc = android.renderscript.Allocation.createFromBitmap(rs, source);
+                Bitmap out = Bitmap.createBitmap(source.getWidth(), source.getHeight(), Bitmap.Config.ARGB_8888);
+                android.renderscript.Allocation outAlloc = android.renderscript.Allocation.createFromBitmap(rs, out);
+                android.renderscript.ScriptIntrinsicBlur blur = android.renderscript.ScriptIntrinsicBlur.create(rs, android.renderscript.Element.U8_4(rs));
+                blur.setRadius(r);
+                blur.setInput(inAlloc);
+                blur.forEach(outAlloc);
+                outAlloc.copyTo(out);
+                rs.destroy();
+                return out;
+            } catch (Throwable t) {
+                return source;
+            }
+        }
     }
 }
