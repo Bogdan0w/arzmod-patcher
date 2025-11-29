@@ -279,7 +279,7 @@ public class SettingsPatch {
             };
             adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
             spinner.setAdapter(adapter);
-            spinner.setPopupBackgroundResource(com.miami.game.core.drawable.resources.R.drawable.bg_arizona);
+            spinner.setPopupBackgroundResource(BuildConfig.IS_ARIZONA ? com.miami.game.core.drawable.resources.R.drawable.arizona_backgournd_home : com.miami.game.core.drawable.resources.R.drawable.rodina_backgournd_home);
 
             LinearLayout.LayoutParams spinnerParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT,

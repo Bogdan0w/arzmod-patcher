@@ -1069,8 +1069,7 @@ def arzmod_patch():
 	ui_path = app_dir + f"/{arz_ui_path}"
 	manifest_path = app_dir + '/AndroidManifest.xml'
 
-	if project == RODINA_MOBILE: #costyl-1667
-		move_and_cleanup(app_dir + f"/smali/ru/mrlargha", ui_path + "/ru/mrlargha")
+	move_and_cleanup(app_dir + f"/smali/ru/mrlargha", ui_path + "/ru/mrlargha") #costyl-1667 (on arzver from 1681)
 
 	move_and_cleanup(app_dir + "/smali_classes6", ui_path)
 	move_and_cleanup(src_path + "/ru/mrlargha", ui_path + "/ru/mrlargha")

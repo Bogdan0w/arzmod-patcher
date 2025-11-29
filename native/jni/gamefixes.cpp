@@ -94,10 +94,10 @@ struct HudData {
 static HudData hud_data;
 
 #ifdef __arm__
-void (*InstallHud)(int param_1, int param_2) = nullptr;
-void InstallHudHook(int param_1, int param_2)
+void (*InstallHud)(int param_1) = nullptr;
+void InstallHudHook(int param_1)
 {
-    InstallHud(hud_data.hud_type, param_2);
+    InstallHud(hud_data.hud_type);
 }
 
 void (*InstallRadar)(int param_1, int param_2) = nullptr;
