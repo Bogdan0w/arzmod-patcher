@@ -62,12 +62,20 @@ public class AppContext {
         }
     }
 
+    public static synchronized Activity getMainEntrenchActivity() {
+        return MainEntrenchActivity;
+    }
+
     public static synchronized void getGTASAActivity(final GTASAActivityCallback callback) {
         if (GTASAActivity != null) {
             callback.onResult(GTASAActivity);
         } else {
             gtasaCallbacks.add(callback);
         }
+    }
+
+    public static synchronized Activity getGTASAActivity() {
+        return GTASAActivity;
     }
 
     public static synchronized void setMainEntrenchActivity(Activity activity) {

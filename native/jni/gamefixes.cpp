@@ -9,8 +9,6 @@
 #include <string>
 #include "offsets.h"
 
-
-#ifdef __arm__
 struct VersionStringData {
     char* saved_string = nullptr;
     char* saved_dest = nullptr;
@@ -26,13 +24,38 @@ struct VersionStringData {
 };
 static VersionStringData version_data;
 
+struct ChatRendererData {
+    bool is_patched = false;
+    bool is_set = false;
+    float pos_x = 0.0f;
+    float pos_y = 0.0f;
+    uint64_t addr = 0;
+};
+static ChatRendererData chat_data;
+
+struct HudData {
+    int hud_type = 3;
+    int radar_type = 0;
+    bool is_patched = false;
+    int kostyl = 0;
+};
+static HudData hud_data;
+
+#ifdef __arm__
 void (*VersionRenderer)(int param_1, int param_2) = nullptr;
 void VersionRendererHook(int param_1, int param_2)
 {
     if(version_data.saved_dest == nullptr && strlen((char*)(param_1 + 0x53)) > 0)
     {
         version_data.saved_dest = (char*)(param_1 + 0x53);
-        
+#else
+void (*VersionRenderer)(int64_t param_1) = nullptr;
+void VersionRendererHook(int64_t param_1)
+{
+    if(version_data.saved_dest == nullptr && strlen((char*)(param_1)) > 0)
+    {
+        version_data.saved_dest = (char*)(param_1);
+#endif
         char version[32] = {0};
         char commit[32] = {0};
         
@@ -57,18 +80,15 @@ void VersionRendererHook(int param_1, int param_2)
             *version_data.saved_dest = '\0';
         }
     }
+    #ifdef __arm__
     VersionRenderer(param_1, param_2);
+    #else
+    VersionRenderer(param_1);
+    #endif
 }
 
 
-struct ChatRendererData {
-    bool is_patched = false;
-    bool is_set = false;
-    float pos_x = 0.0f;
-    float pos_y = 0.0f;
-};
-static ChatRendererData chat_data;
-
+#ifdef __arm__
 void (*ChatRenderer)(int param_1, int param_2) = nullptr;
 void ChatRendererHook(int param_1, int param_2)
 {    
@@ -82,18 +102,7 @@ void ChatRendererHook(int param_1, int param_2)
     
     return ChatRenderer(param_1, param_2);
 }
-#endif
 
-
-struct HudData {
-    int hud_type = 3;
-    int radar_type = 0;
-    bool is_patched = false;
-    int kostyl = 0;
-};
-static HudData hud_data;
-
-#ifdef __arm__
 void (*InstallHud)(int param_1) = nullptr;
 void InstallHudHook(int param_1)
 {
@@ -106,6 +115,7 @@ void InstallRadarHook(int param_1, int param_2)
     InstallRadar(param_1, hud_data.radar_type);
 } 
 #elif defined __aarch64__
+
 void (*InstallHud)(long param_1) = nullptr;
 void InstallHudHook(long param_1)
 {
@@ -123,7 +133,6 @@ void InstallHudHook(long param_1)
 
 
 extern "C" {
-    #ifdef __arm__
     JNIEXPORT void JNICALL
     Java_com_arzmod_radare_InitGamePatch_setVersionString(JNIEnv* env, jobject thiz, jstring string) {
         if(version_data.saved_string) {
@@ -166,16 +175,52 @@ extern "C" {
         chat_data.pos_y = pos_y;
         chat_data.is_set = true;
 
+        #ifdef __arm__
         if(!chat_data.is_patched) {
             int result = PatternHook(CHAT_RENDER_PATTERN, libHandle, libSize, reinterpret_cast<uintptr_t>(ChatRendererHook), reinterpret_cast<uintptr_t*>(&ChatRenderer), "ChatRendererHook");
             if(result) {
                 chat_data.is_patched = true;
             } else {
                 chat_data.is_patched = true;
+            } 
+        }
+        #else
+        if(!chat_data.is_patched)
+        {
+            void* func_addr = FindPattern(CHAT_RENDER_PATTERN, libHandle, libSize);
+            if(func_addr)
+            {
+                uint64_t pc = (uintptr_t)func_addr + 0x150;
+
+                uint32_t adrp = *(uint32_t*)pc;
+                int64_t immhi = (adrp >> 5) & 0x7FFFF;
+                int64_t immlo = (adrp >> 29) & 0x3;
+                int64_t imm = (immhi << 2) | immlo;
+                if (imm & (1LL << 20))
+                    imm |= ~((1LL << 21) - 1);
+
+                uint64_t page = (pc & ~0xFFFULL) + (imm << 12);
+
+                uint32_t add = *(uint32_t*)(pc + 4);
+                uint64_t off = (add >> 10) & 0xFFF;
+
+                chat_data.addr = page + off;
+                chat_data.is_patched = true;
+
+                *(float*)chat_data.addr = chat_data.pos_x;
+                *(float*)(chat_data.addr + 4) = chat_data.pos_y;
             }
         }
+        else
+        {
+            if(chat_data.addr)
+            {
+                *(float*)chat_data.addr = chat_data.pos_x;
+                *(float*)(chat_data.addr + 4) = chat_data.pos_y;
+            }
+        }
+        #endif
     }
-    #endif
     
     JNIEXPORT void JNICALL
     Java_com_arzmod_radare_InitGamePatch_setHudType(JNIEnv* env, jobject thiz, jint hud_type, jint radar_type) {

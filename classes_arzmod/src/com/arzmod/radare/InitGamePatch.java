@@ -413,14 +413,11 @@ public class InitGamePatch {
 
         SharedPreferences defaultSharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
 
-        if (!Objects.equals(Build.CPU_ABI, "arm64-v8a"))
+        if(SettingsPatch.getSettingsKeyValue(SettingsPatch.IS_VERSION_HIDED)) InitGamePatch.setVersionString(""); 
+        if(SettingsPatch.getSettingsKeyValue(SettingsPatch.CHAT_POSITION_ENABLED))
         {
-            if(SettingsPatch.getSettingsKeyValue(SettingsPatch.CHAT_POSITION_ENABLED))
-            {
-                ChatPosition chatPosition = SettingsPatch.getChatPosition();
-                if(chatPosition.enabled) InitGamePatch.setChatPosition(chatPosition.x, chatPosition.y);
-            }
-            if(SettingsPatch.getSettingsKeyValue(SettingsPatch.IS_VERSION_HIDED)) InitGamePatch.setVersionString("");
+            ChatPosition chatPosition = SettingsPatch.getChatPosition();
+            if(chatPosition.enabled) InitGamePatch.setChatPosition(chatPosition.x, chatPosition.y);
         }
         if(isCustomServer())
         {

@@ -104,6 +104,15 @@ public class ApplicationStart {
         if (currentTime - lastStartGameTime >= MIN_START_INTERVAL) {
             lastStartGameTime = currentTime;
 
+            try {
+                Activity activity = AppContext.getGTASAActivity();
+                if (activity != null && !activity.isFinishing() && !activity.isDestroyed()) {
+                    activity.finish();
+                }
+            } catch (Exception e) {
+                Log.e("AppContext", "Error finishing activity: " + e.getMessage());
+            }
+
             if(ip.equals("lastplayed")) {    
                 context.startActivity(new Intent(context, GTASA.class));
                 return;
@@ -621,11 +630,27 @@ public class ApplicationStart {
                         JSONObject json = new JSONObject(jsonResponse);
                         String latestVersion = json.getString("tag_name").replace("v", "");
                         final String releaseUrl = json.getString("html_url");
+                        boolean isPrerelease = json.optBoolean("prerelease", false);
                         
                         int currentVersion = BuildConfig.VERSION_CODE;
                         int newVersion = Integer.parseInt(latestVersion);
 
-                        if (newVersion != currentVersion) {
+                        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
+                        String lastShownVersion = prefs.getString("last_shown_prerelease", "");
+                        boolean hasShownPrerelease = !lastShownVersion.isEmpty();
+
+                        if (!isPrerelease && hasShownPrerelease) {
+                            prefs.edit().remove("last_shown_prerelease").apply();
+                            hasShownPrerelease = false;
+                        }
+
+                        boolean shouldShowUpdate = !isPrerelease || (isPrerelease && !hasShownPrerelease);
+
+                        if (newVersion != currentVersion && shouldShowUpdate) {
+                            final boolean finalIsPrerelease = isPrerelease;
+                            final String finalLatestVersion = latestVersion;
+                            final SharedPreferences finalPrefs = prefs;
+                            
                             new Handler(Looper.getMainLooper()).post(new Runnable() {
                                 @Override
                                 public void run() {
@@ -648,7 +673,8 @@ public class ApplicationStart {
                                     if (newVersion < currentVersion) {
                                         message.append("\n\nТекущая версия была удалена. Рекомендуется вернуться на старую версию. (ничего удалять/переустанавливать не надо, просто установить новый APK)");
                                     } else {
-                                        message.append("\n\nРекомендуется обновить приложение для корректной работы.");
+                                        if (finalIsPrerelease) message.append("\n\nВерсия не отмечена как стабильная (не протестирована), а значит может содержать баги или вовсе не работать. Если вы очень хотите обновиться - попробуйте, на старую версию можно будет откатиться в любое время, установив с прошлого релиза. (обновлением без переустановки!)");
+                                        else message.append("\n\nРекомендуется обновить приложение для корректной работы.");
                                     }
                                     builder.setMessage(message.toString());
 
@@ -669,6 +695,11 @@ public class ApplicationStart {
                                     });
 
                                     builder.setCancelable(false);
+                                    
+                                    if (finalIsPrerelease) {
+                                        finalPrefs.edit().putString("last_shown_prerelease", finalLatestVersion).apply();
+                                    }
+                                    
                                     builder.show();
                                 }
                             });
@@ -718,7 +749,7 @@ public class ApplicationStart {
                                         try {
                                             targetDir.getParentFile().mkdirs();
                                             java.io.FileOutputStream fos = new java.io.FileOutputStream(targetDir);
-                                            byte[] buffer = new byte[1024];
+                                            byte[] buffer = new byte[8192];
                                             int len;
                                             while ((len = zis.read(buffer)) > 0) {
                                                 fos.write(buffer, 0, len);

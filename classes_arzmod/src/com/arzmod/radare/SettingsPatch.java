@@ -731,10 +731,9 @@ public class SettingsPatch {
         settingsList.add(new BooleanSetting("Свободная кнопка запуска", "Данная функция позовляет запустить игру во время проверки обновления", IS_FREE_LAUNCH, false, sharedPreferences));
         settingsList.add(new BooleanSetting("Эмуляция актуальной версии", "При включенной функции лаунчер отправляет на сервер самую актуальную версию игры независимую от текущей версии ARZMOD взятую с https://mob.maz-ins.com/game/release/app_version.json", IS_ACTUAL_VERSION, false, sharedPreferences));
 
-        if (!cpu.equals("arm64-v8a")) {
-            settingsList.add(new ChatPositionSetting("Позиция чата", CHAT_POSITION_ENABLED, sharedPreferences));
-            settingsList.add(new BooleanSetting("Скрытие строки версии", "Скрывает строку версии в игре. Доступен также публичный метод, который позволяет вписать свою строку (пример использования есть в скрипте https://github.com/" + BuildConfig.GIT_OWNER + "/" + BuildConfig.GIT_REPO + "/tree/main/configs/scripts/setversionstring.lua )", IS_VERSION_HIDED, false, sharedPreferences));
-        }
+        
+        settingsList.add(new ChatPositionSetting("Позиция чата", CHAT_POSITION_ENABLED, sharedPreferences));
+        settingsList.add(new BooleanSetting("Скрытие строки версии", "Скрывает строку версии в игре. Доступен также публичный метод, который позволяет вписать свою строку (пример использования есть в скрипте https://github.com/" + BuildConfig.GIT_OWNER + "/" + BuildConfig.GIT_REPO + "/tree/main/configs/scripts/setversionstring.lua )", IS_VERSION_HIDED, false, sharedPreferences));
 
         if(BuildConfig.GIT_BUILD)
         {

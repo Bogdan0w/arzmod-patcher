@@ -11,6 +11,11 @@ on:
         required: true
         type: boolean
         default: true
+      is_prerelease:
+        description: 'Создать как пре-релиз'
+        required: true
+        type: boolean
+        default: false
 
 jobs:
   build:
@@ -154,11 +159,17 @@ jobs:
           echo 'alias apktool="java -jar /usr/local/bin/apktool.jar"' >> ~/.bashrc
           source ~/.bashrc
 
-      - name: Build Arizona x32
+      - name: Build Arizona APKs
         run: |
           mkdir -p dist
-          python main.py -actual -setgitver ${{ steps.get_version.outputs.launcher_version }}
-          mv ./app-debug/dist/app-debug.apk ./dist/app-arizona-x32-patched.apk
+          python main.py -actual -fullarm -setgitver ${{ steps.get_version.outputs.launcher_version }}
+          
+          if [ -f "./app-debug/dist/app-arzmod-x32.apk" ]; then
+            mv "./app-debug/dist/app-arzmod-x32.apk" "./dist/app-arizona-x32-patched.apk"
+          fi
+          if [ -f "./app-debug/dist/app-arzmod-x64.apk" ]; then
+            mv "./app-debug/dist/app-arzmod-x64.apk" "./dist/app-arizona-x64-patched.apk"
+          fi
 
       - name: Upload Arizona x32
         uses: actions/upload-artifact@v4
@@ -166,32 +177,28 @@ jobs:
           name: app-arizona-x32-patched
           path: ./dist/app-arizona-x32-patched.apk
 
-      - name: Build Arizona x64
-        run: |
-          python main.py -actual -x64 -setgitver ${{ steps.get_version.outputs.launcher_version }}
-          mv ./app-debug/dist/app-debug.apk ./dist/app-arizona-x64-patched.apk
-
       - name: Upload Arizona x64
         uses: actions/upload-artifact@v4
         with:
           name: app-arizona-x64-patched
           path: ./dist/app-arizona-x64-patched.apk
 
-      - name: Build Rodina x32
+      - name: Build Rodina APKs
         run: |
-          python main.py -actual -rodina -setgitver ${{ steps.get_version.outputs.launcher_version }}
-          mv ./app-debug/dist/app-debug.apk ./dist/app-rodina-x32-patched.apk
+          python main.py -actual -rodina -fullarm -setgitver ${{ steps.get_version.outputs.launcher_version }}
+          
+          if [ -f "./app-debug/dist/app-rdnmod-x32.apk" ]; then
+            mv "./app-debug/dist/app-rdnmod-x32.apk" "./dist/app-rodina-x32-patched.apk"
+          fi
+          if [ -f "./app-debug/dist/app-rdnmod-x64.apk" ]; then
+            mv "./app-debug/dist/app-rdnmod-x64.apk" "./dist/app-rodina-x64-patched.apk"
+          fi
 
       - name: Upload Rodina x32
         uses: actions/upload-artifact@v4
         with:
           name: app-rodina-x32-patched
           path: ./dist/app-rodina-x32-patched.apk
-
-      - name: Build Rodina x64
-        run: |
-          python main.py -actual -rodina -x64 -setgitver ${{ steps.get_version.outputs.launcher_version }}
-          mv ./app-debug/dist/app-debug.apk ./dist/app-rodina-x64-patched.apk
 
       - name: Upload Rodina x64
         uses: actions/upload-artifact@v4
@@ -209,16 +216,18 @@ jobs:
             Версия лаунчера: ${{ steps.get_version.outputs.launcher_version_name }}
             Номер сборки: ${{ steps.get_version.outputs.launcher_version }}
             ${{ steps.build_note.outputs.note }}
-
+    
             Изменения с последнего релиза:
             ${{ steps.changelog.outputs.changelog }}
+
+            ${{ inputs.is_prerelease && '⚠ Данная версия не отмечена как стабильная (не протестирована), а значит может содержать баги или вовсе не работать. Если вы очень хотите обновиться - попробуйте, на старую версию можно будет откатиться в любое время, установив с прошлого релиза. (обновлением без переустановки!)' || '' }}
           files: |
             ./dist/app-arizona-x32-patched.apk
             ./dist/app-arizona-x64-patched.apk
             ./dist/app-rodina-x32-patched.apk
             ./dist/app-rodina-x64-patched.apk
           draft: false
-          prerelease: false
+          prerelease: ${{ inputs.is_prerelease }}
 
       - name: Set build status to success
         if: success() && github.event_name == 'workflow_dispatch'

@@ -35,6 +35,47 @@ std::string GetFunctionPattern(void* func_addr, size_t size) {
     return pattern;
 }
 
+void* FindPattern(const std::string& pattern_str, uintptr_t start, size_t length) {
+    std::vector<uint8_t> pattern_bytes;
+    std::vector<bool> mask;
+    
+    std::string pattern = pattern_str;
+    pattern.erase(std::remove(pattern.begin(), pattern.end(), ' '), pattern.end());
+    
+    for (size_t i = 0; i < pattern.length(); ) {
+        if (i + 1 < pattern.length() && pattern[i] == '?' && pattern[i + 1] == '?') {
+            pattern_bytes.push_back(0);
+            mask.push_back(false);
+            i += 2;
+        } else if (i + 1 < pattern.length()) {
+            std::string byte_str = pattern.substr(i, 2);
+            pattern_bytes.push_back(static_cast<uint8_t>(std::stoi(byte_str, nullptr, 16)));
+            mask.push_back(true);
+            i += 2;
+        } else {
+            return nullptr;
+        }
+    }
+    
+    const char* memory = static_cast<const char*>((void*)start);
+    size_t pattern_len = pattern_bytes.size();
+    
+    for (size_t i = 0; i <= length - pattern_len; i++) {
+        bool found = true;
+        for (size_t j = 0; j < pattern_len; j++) {
+            if (mask[j] && memory[i + j] != pattern_bytes[j]) {
+                found = false;
+                break;
+            }
+        }
+        if (found) {
+            return const_cast<void*>(reinterpret_cast<const void*>(memory + i));
+        }
+    }
+    
+    return nullptr;
+}
+
 uintptr_t FindLibrary(const char* library)
 {
     char filename[0xFF] = {0},
