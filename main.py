@@ -1514,8 +1514,8 @@ def arzmod_patch():
 		move-result p1
 	""")
 	search_and_replace(get_src_path(patchs_path, "/ru/mrlargha/commonui/elements/hud/presentation/Hud.smali"), ".field private final binding", ".field public final binding")
-	insert_smali_code_after_line(get_src_path(patchs_path, "/ru/mrlargha/commonui/elements/hud/presentation/Hud$installHud$1.smali"), ".method public onResponse", "Lru/mrlargha/commonui/databinding/HudPageBinding;->hudServerInfoContainer:Landroidx/constraintlayout/widget/ConstraintLayout;", """
-		invoke-static {v0}, Lcom/arzmod/radare/GamePatches;->updateHudShield(Lru/mrlargha/commonui/elements/hud/presentation/Hud;)V
+	insert_smali_code_after_line(get_src_path(patchs_path, "/ru/mrlargha/commonui/elements/hud/presentation/Hud$installHud$1$1.smali"), ".method public final invokeSuspend", "Lru/mrlargha/commonui/databinding/HudPageBinding;->hudServerInfoContainer:Landroidx/constraintlayout/widget/ConstraintLayout;", """
+		invoke-static {p0}, Lcom/arzmod/radare/GamePatches;->updateHudShield(Lru/mrlargha/commonui/elements/hud/presentation/Hud;)V
 	""")
 	insert_smali_code_after_line(get_src_path(patchs_path, "/ru/mrlargha/commonui/elements/hud/presentation/Hud.smali"), ".method public final installHud", "Lru/mrlargha/commonui/databinding/HudPageBinding;->hudServerShieldSite:Landroid/widget/TextView;", """
 		invoke-static {p0}, Lcom/arzmod/radare/GamePatches;->updateHudShield(Lru/mrlargha/commonui/elements/hud/presentation/Hud;)V
@@ -1860,6 +1860,7 @@ if __name__ == "__main__":
 	testmode = False
 
 	if "-install" in sys.argv:
+		name = get_app_release_name()
 		print(f"Устанавливаем приложение {app_dir}/dist/{name}.apk")
 		if os.path.exists(f"{app_dir}/dist/{name}.apk"):
 			subprocess.run(['adb', 'install', f"{app_dir}/dist/{name}.apk"], capture_output=True, text=True)
