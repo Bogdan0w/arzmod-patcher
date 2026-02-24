@@ -1,9 +1,9 @@
 {
-    "id": "novupdate",
-    "width": 626,
-    "height": 612,
-    "title": "[changelog] Обновление мода и игры до версии v16.6.7 👇",
-    "imageUrl": "https://raw.githubusercontent.com/idmkdev/arzmod-patcher/refs/heads/main/configs/images/novupdate.png",
-    "url": "https://t.me/CleoArizona/267",
+    "id": "modsstoreupd121",
+    "width": 1230,
+    "height": 540,
+    "title": "[Обновление Script Manager]\nУстановка скриптов и сборок прямо в игре! 👇",
+    "imageUrl": "https://raw.githubusercontent.com/idmkdev/arzmod-patcher/refs/heads/main/configs/images/modsstore.png",
+    "url": "https://t.me/CleoArizona/277",
     "isActive": true
 }
